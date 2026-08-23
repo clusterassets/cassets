@@ -5,7 +5,7 @@ export default defineConfig({
 
   version: "stable",
 
-  workspaceFolder: ".",
+  workspaceFolder: "test/fixtures/clean-workspace",
 
   mocha: {
     ui: "tdd",
