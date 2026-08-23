@@ -82,7 +82,7 @@ jobs:
       - run: npm install
       - run: npm run validate
       - run: npx vsce package --out cassets-ci.vsix
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cassets-vsix-${{ github.sha }}
           path: cassets-ci.vsix
