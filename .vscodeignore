@@ -1,0 +1,10 @@
+.git/**
+.github/**
+.vscode/**
+test/**
+scripts/**
+node_modules/**
+*.vsix
+README-INSTALL*
+package-lock.json
+docs/**

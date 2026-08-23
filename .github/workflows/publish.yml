@@ -1,0 +1,147 @@
+name: Release to Visual Studio Marketplace
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump for manual release"
+        type: choice
+        required: true
+        default: patch
+        options: [patch, minor, major]
+      publish:
+        description: "Publish to Marketplace"
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: cassets-marketplace-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # Ignore the version commit created by this workflow.
+    if: github.actor != 'github-actions[bot]' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: visual-studio-marketplace
+
+    steps:
+      - name: Checkout trusted main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Resolve merged PR
+        id: pr
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          PR_JSON="$(gh api -H "Accept: application/vnd.github+json"             "/repos/${REPO}/commits/${SHA}/pulls" --jq '.[0] // {}')"
+          TITLE="$(printf '%s' "$PR_JSON" | jq -r '.title // ""')"
+          LABELS="$(printf '%s' "$PR_JSON" | jq -r '[.labels[]?.name] | join(",")')"
+          NUMBER="$(printf '%s' "$PR_JSON" | jq -r '.number // ""')"
+
+          if [ -z "$TITLE" ]; then
+            TITLE="$(git log -1 --pretty=%s)"
+          fi
+
+          {
+            echo "title<<EOF"
+            echo "$TITLE"
+            echo "EOF"
+            echo "labels=$LABELS"
+            echo "number=$NUMBER"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Resolve semantic version bump
+        id: bump
+        env:
+          PR_TITLE: ${{ steps.pr.outputs.title }}
+          PR_LABELS: ${{ steps.pr.outputs.labels }}
+          MANUAL_BUMP: ${{ inputs.bump }}
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BUMP="$MANUAL_BUMP"
+          else
+            BUMP="$(node scripts/resolve-release-bump.mjs)"
+          fi
+          echo "value=$BUMP" >> "$GITHUB_OUTPUT"
+
+      - name: Skip release when requested
+        if: steps.bump.outputs.value == 'skip'
+        run: echo "release:skip label detected. No Marketplace release."
+
+      - name: Validate
+        if: steps.bump.outputs.value != 'skip'
+        run: |
+          npm run validate
+          npm run test:unit
+
+      - name: Run VS Code integration tests
+        if: steps.bump.outputs.value != 'skip'
+        run: xvfb-run -a npm run test:integration
+
+      - name: Bump package version
+        id: version
+        if: steps.bump.outputs.value != 'skip'
+        shell: bash
+        run: |
+          VERSION="$(node scripts/bump-version.mjs "${{ steps.bump.outputs.value }}")"
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing CAssets v$VERSION"
+
+      - name: Validate bumped package
+        if: steps.bump.outputs.value != 'skip'
+        run: npm run validate
+
+      - name: Package VSIX
+        if: steps.bump.outputs.value != 'skip'
+        run: npx vsce package --out "cassets-${{ steps.version.outputs.value }}.vsix"
+
+      - name: Commit version and tag
+        if: steps.bump.outputs.value != 'skip'
+        shell: bash
+        run: |
+          git config user.name "cassets-release-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json 2>/dev/null || git add package.json
+          git commit -m "chore(release): v${{ steps.version.outputs.value }} [skip ci]"
+          git tag -a "v${{ steps.version.outputs.value }}" -m "CAssets v${{ steps.version.outputs.value }}"
+          git push origin HEAD:main
+          git push origin "v${{ steps.version.outputs.value }}"
+
+      - name: Publish Visual Studio Marketplace
+        if: steps.bump.outputs.value != 'skip' && (github.event_name != 'workflow_dispatch' || inputs.publish)
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx vsce publish --packagePath "cassets-${{ steps.version.outputs.value }}.vsix"
+
+      - name: Create GitHub Release
+        if: steps.bump.outputs.value != 'skip'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release create "v${{ steps.version.outputs.value }}"             "cassets-${{ steps.version.outputs.value }}.vsix"             --title "CAssets v${{ steps.version.outputs.value }}"             --generate-notes             --verify-tag

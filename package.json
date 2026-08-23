@@ -1,0 +1,323 @@
+{
+  "name": "cassets",
+  "displayName": "CAssets DevReady \u2014 Clone. Open. Code.",
+  "description": "Turn VS Code and any repository into a professionally prepared developer workspace. CAssets DevReady detects the stack, recommends the right capabilities, prepares safe baselines, and guides contributors to the first successful build.",
+  "version": "0.6.0",
+  "publisher": "clusterassets",
+  "license": "MIT",
+  "icon": "images/icon.png",
+  "banner": {
+    "color": "#161B22",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/clusterassets/cassets.git"
+  },
+  "homepage": "https://clusterassets.com",
+  "bugs": {
+    "url": "https://github.com/clusterassets/cassets/issues"
+  },
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Other",
+    "Extension Packs",
+    "Linters"
+  ],
+  "keywords": [
+    "ai",
+    "ansible",
+    "bootstrap",
+    "clone to build",
+    "containers",
+    "contributor onboarding",
+    "debugging",
+    "developer experience",
+    "developer onboarding",
+    "developer productivity",
+    "developer workstation",
+    "devready",
+    "dotnet",
+    "dx",
+    "dx automation",
+    "editorconfig",
+    "environment variables",
+    "first build",
+    "github actions",
+    "gitignore",
+    "mcp",
+    "monorepo",
+    "monorepo graph",
+    "nodejs",
+    "onboarding automation",
+    "prerequisites",
+    "project intelligence",
+    "python",
+    "runtime detection",
+    "rust",
+    "terraform",
+    "testing",
+    "workspace",
+    "workspace intelligence",
+    "workspace orchestration",
+    "zero config"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "CAssets may inspect file names in Restricted Mode but never writes project files until Workspace Trust is granted."
+    }
+  },
+  "scripts": {
+    "validate": "node scripts/validate.mjs",
+    "test:unit": "node --test test/unit/*.test.js",
+    "test:integration": "vscode-test",
+    "test": "npm run test:unit && npm run test:integration",
+    "vscode:prepublish": "npm run validate && npm run test:unit",
+    "package:pre": "vsce package --pre-release",
+    "publish:pre": "vsce publish --pre-release",
+    "ci": "npm run validate && npm run test:unit",
+    "release:version": "node scripts/bump-version.mjs",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.6.0"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "cassets.applyProfessionalSettings",
+        "title": "CAssets: Apply Professional User Settings"
+      },
+      {
+        "command": "cassets.bootstrapWorkspace",
+        "title": "CAssets: Apply Recommended Workspace Setup"
+      },
+      {
+        "command": "cassets.restoreTemplates",
+        "title": "CAssets: Restore Missing Generated Templates"
+      },
+      {
+        "command": "cassets.rescanWorkspace",
+        "title": "CAssets: Re-scan Workspace"
+      },
+      {
+        "command": "cassets.projectHealth",
+        "title": "CAssets: Project Health"
+      },
+      {
+        "command": "cassets.showStack",
+        "title": "CAssets: Show Detected Stack"
+      },
+      {
+        "command": "cassets.openManifest",
+        "title": "CAssets: Open .cassets.json"
+      },
+      {
+        "command": "cassets.extensionAudit",
+        "title": "CAssets: Extension Audit"
+      },
+      {
+        "command": "cassets.showIntelligence",
+        "title": "CAssets: Show Project Intelligence"
+      },
+      {
+        "command": "cassets.showEnvironmentVariables",
+        "title": "CAssets: Show Detected Environment Variables"
+      },
+      {
+        "command": "cassets.refreshEnvExample",
+        "title": "CAssets: Refresh .env.example Suggestions"
+      },
+      {
+        "command": "cassets.howToRun",
+        "title": "CAssets: How Do I Run This Repo?"
+      },
+      {
+        "command": "cassets.checkPrerequisites",
+        "title": "CAssets: Check Developer Prerequisites"
+      },
+      {
+        "command": "cassets.showWorkspaceGraph",
+        "title": "CAssets: Show Workspace Package Graph"
+      },
+      {
+        "command": "cassets.runRecommended",
+        "title": "CAssets: Run Recommended Task"
+      },
+      {
+        "command": "cassets.showOnboarding",
+        "title": "CAssets: Show Contributor Onboarding"
+      }
+    ],
+    "configuration": {
+      "title": "CAssets",
+      "properties": {
+        "cassets.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable CAssets repository detection and commands."
+        },
+        "cassets.mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "review",
+            "observe"
+          ],
+          "enumDescriptions": [
+            "Apply only safe missing baseline files after you opt in.",
+            "Detect and wait for you to run Apply Recommended Workspace Setup.",
+            "Detect and report only; never create project baseline files automatically."
+          ],
+          "default": "review",
+          "description": "Controls how CAssets applies project configuration."
+        },
+        "cassets.autoRescan": {
+          "type": "boolean",
+          "default": true,
+          "description": "Re-detect the project stack when important project metadata changes."
+        },
+        "cassets.templates.gitignore": {
+          "type": "boolean",
+          "default": true
+        },
+        "cassets.templates.editorconfig": {
+          "type": "boolean",
+          "default": true
+        },
+        "cassets.templates.gitattributes": {
+          "type": "boolean",
+          "default": true
+        },
+        "cassets.templates.envExample": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "always",
+            "never"
+          ],
+          "default": "auto"
+        },
+        "cassets.templates.npmignore": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "always",
+            "never"
+          ],
+          "default": "auto"
+        },
+        "cassets.templates.githubCi": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "always",
+            "never"
+          ],
+          "default": "auto"
+        },
+        "cassets.templates.contributing": {
+          "type": "boolean",
+          "default": false
+        },
+        "cassets.templates.agents": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "always",
+            "never"
+          ],
+          "default": "auto"
+        },
+        "cassets.mcp.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Generate a minimal MCP configuration when explicitly enabled. Disabled by default for public installations."
+        },
+        "cassets.notifications": {
+          "type": "boolean",
+          "default": true
+        },
+        "cassets.intelligence.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable deeper repository intelligence such as monorepo, runtime, test, lint, formatter, and environment-variable detection."
+        },
+        "cassets.intelligence.scanEnvironmentVariables": {
+          "type": "boolean",
+          "default": true,
+          "description": "Detect environment-variable names from a bounded set of source/config files. Values are never collected."
+        },
+        "cassets.intelligence.maxEnvironmentFiles": {
+          "type": "number",
+          "default": 120,
+          "minimum": 10,
+          "maximum": 1000,
+          "description": "Maximum number of source/config files inspected for environment-variable names."
+        },
+        "cassets.tasks.mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "minimal",
+            "none"
+          ],
+          "default": "auto",
+          "description": "Controls generation of VS Code tasks from detected repository commands."
+        },
+        "cassets.debug.mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "minimal",
+            "none"
+          ],
+          "default": "auto",
+          "description": "Controls generation of launch configurations for detected runtimes."
+        },
+        "cassets.health.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the current CAssets Project Health score in the VS Code status bar."
+        },
+        "cassets.onboarding.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable contributor onboarding analysis and run guidance."
+        },
+        "cassets.prerequisites.checkOnOpen": {
+          "type": "boolean",
+          "default": false,
+          "description": "Check local runtime/tool availability when a trusted workspace opens. Detection itself never installs tools."
+        },
+        "cassets.workspaceGraph.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Analyze workspace/package relationships for supported monorepos."
+        },
+        "cassets.workspaceGraph.maxPackages": {
+          "type": "number",
+          "default": 200,
+          "minimum": 10,
+          "maximum": 2000,
+          "description": "Maximum package manifests included in workspace graph analysis."
+        },
+        "cassets.recommendedTask.preferDev": {
+          "type": "boolean",
+          "default": true,
+          "description": "Prefer a detected development task over build/test for Run Recommended Task."
+        }
+      }
+    }
+  }
+}
