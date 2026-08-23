@@ -1,20 +1,18 @@
 ## Summary
 
-<!-- Use a Conventional Commit-style PR title. -->
+<!-- Use a Conventional Commit-style PR title, for example:
+fix(ci): stabilize Linux integration tests
+feat(detector): add new project signal
+-->
 
 ## Release impact
 
-Apply one label when you want to override automatic inference:
+Choose the expected impact. Release labels are classification aids; Marketplace publication happens only from a version tag.
 
-- `release:major`
-- `release:minor`
-- `release:patch`
-- `release:skip`
-
-Without a release label:
-- `feat:` -> minor
-- `type!:` -> major
-- everything else -> patch
+- [ ] No release / repository-only change
+- [ ] Patch (`release:patch`)
+- [ ] Minor (`release:minor`)
+- [ ] Major / breaking (`release:major`)
 
 ## Validation
 

@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       pre_release:
-        description: "Publish as VS Code Marketplace pre-release"
+        description: "Publish as Visual Studio Marketplace pre-release"
         required: true
         default: true
         type: boolean
@@ -66,37 +66,45 @@ jobs:
           echo "tag:          $TAG_VERSION"
 
           if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
-            echo "Tag version does not match package.json."
+            echo "::error::Tag v$TAG_VERSION does not match package.json version $PACKAGE_VERSION."
             exit 1
           fi
 
-      - name: Package VSIX
+      - name: Resolve version
+        id: version
         shell: bash
         run: |
           VERSION="$(node -p "require('./package.json').version")"
-          npx vsce package \
-            --pre-release \
-            --out "cassets-${VERSION}.vsix"
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Publish to Visual Studio Marketplace
+      - name: Package VSIX (tag/pre-release)
+        if: github.event_name == 'push' || inputs.pre_release
+        run: |
+          npx vsce package             --pre-release             --out "cassets-${{ steps.version.outputs.value }}.vsix"
+
+      - name: Package VSIX (manual stable)
+        if: github.event_name == 'workflow_dispatch' && !inputs.pre_release
+        run: |
+          npx vsce package             --out "cassets-${{ steps.version.outputs.value }}.vsix"
+
+      - name: Publish Marketplace pre-release
+        if: github.event_name == 'push' || inputs.pre_release
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
-          VERSION="$(node -p "require('./package.json').version")"
-          npx vsce publish \
-            --pre-release \
-            --packagePath "cassets-${VERSION}.vsix"
+          npx vsce publish             --pre-release             --packagePath "cassets-${{ steps.version.outputs.value }}.vsix"
 
-      - name: Create GitHub Release
+      - name: Publish Marketplace stable
+        if: github.event_name == 'workflow_dispatch' && !inputs.pre_release
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          npx vsce publish             --packagePath "cassets-${{ steps.version.outputs.value }}.vsix"
+
+      - name: Create GitHub pre-release
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          VERSION="$(node -p "require('./package.json').version")"
-
-          gh release create "v${VERSION}" \
-            "cassets-${VERSION}.vsix" \
-            --title "CAssets DevReady v${VERSION}" \
-            --generate-notes \
-            --prerelease
+          gh release create "v${{ steps.version.outputs.value }}"             "cassets-${{ steps.version.outputs.value }}.vsix"             --title "CAssets DevReady v${{ steps.version.outputs.value }}"             --generate-notes             --prerelease
