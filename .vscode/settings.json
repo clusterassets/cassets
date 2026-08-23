@@ -1,0 +1,6 @@
+{
+    "editor.minimap.enabled": false,
+    "editor.largeFileOptimizations": true,
+    "files.insertFinalNewline": true,
+    "files.trimTrailingWhitespace": true
+}

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "profile": "professional",
+  "templates": {
+    "gitignore": true,
+    "editorconfig": true,
+    "gitattributes": true,
+    "envExample": "auto",
+    "npmignore": "auto",
+    "githubCi": "auto",
+    "contributing": false,
+    "agents": "auto"
+  },
+  "dismissed": [],
+  "detectedAtCreation": {
+    "node": true,
+    "python": false,
+    "dotnet": false,
+    "rust": false,
+    "go": false,
+    "java": false,
+    "docker": false,
+    "terraform": false,
+    "ansible": false,
+    "kubernetes": false
+  },
+  "schemaVersion": 2
+}

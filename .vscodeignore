@@ -8,3 +8,7 @@ node_modules/**
 README-INSTALL*
 package-lock.json
 docs/**
+.cassets.json
+.gitignore
+.vscode-test.mjs
+AGENTS.md
