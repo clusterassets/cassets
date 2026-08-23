@@ -1,8 +1,8 @@
 {
   "name": "cassets",
-  "displayName": "CAssets DevReady \u2014 Clone. Open. Code.",
+  "displayName": "CAssets DevReady — Clone. Open. Code.",
   "description": "Turn VS Code and any repository into a professionally prepared developer workspace. CAssets DevReady detects the stack, recommends the right capabilities, prepares safe baselines, and guides contributors to the first successful build.",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "publisher": "clusterassets",
   "license": "MIT",
   "icon": "images/icon.png",
