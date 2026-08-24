@@ -14,6 +14,19 @@ DevReady settings use the `cassets.*` namespace.
 - `auto` — after opt-in, create safe missing baselines.
 - `observe` — analysis only.
 
+## Workstation Engine
+
+```json
+{
+  "cassets.workstation.enabled": true,
+  "cassets.workstation.optimizeWorkspacePerformance": true
+}
+```
+
+Workstation initialization is explicit. DevReady writes only missing user settings whose effective VS Code default does not already satisfy the baseline. Existing explicit user settings are preserved. Personal themes, keybindings, accounts, AI/provider settings and extension-specific settings are outside this baseline.
+
+Workspace performance optimization is stack-aware and preserves existing workspace/workspace-folder ownership of `files.watcherExclude` and `search.exclude`.
+
 ## Developer Intelligence
 
 ```json

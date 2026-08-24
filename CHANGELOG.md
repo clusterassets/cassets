@@ -2,6 +2,20 @@
 
 > Product name: **CAssets DevReady — Clone. Open. Code.**
 
+## 0.7.0 — Native-First Workstation Engine
+
+- Added `CAssets: Initialize Developer Workstation` for fresh and corporate VS Code installations.
+- Added a native-only professional settings baseline that excludes themes, accounts, AI/provider settings, keybindings and extension-specific configuration.
+- Existing explicit user settings are preserved instead of overwritten.
+- Added `CAssets: Workstation Health`.
+- Added `CAssets: Native Capability Audit` and native-vs-extension capability coverage.
+- Added `CAssets: Optimize Workspace Performance` with stack-aware watcher/search exclusions.
+- Added Node, Python, .NET, Rust, Go, Java and Terraform performance exclusion policies.
+- Kept extension recommendations capability-driven and non-installing.
+- Made first-run consent non-blocking during extension activation.
+- Added Workstation Engine unit tests.
+- Aligned repository CI with Linux Xvfb + Windows integration testing and tag-based Marketplace publication.
+
 ## 0.6.0 — Contributor & Workspace Orchestrator
 
 - Added local prerequisite availability checks for detected runtimes and developer tools.

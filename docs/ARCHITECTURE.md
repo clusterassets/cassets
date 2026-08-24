@@ -77,3 +77,26 @@ Capability + Policy Engines
   ↓
 Tasks / Debug / Templates / Extensions / Health
 ```
+
+## v0.7 Workstation Engine
+
+```text
+VS Code installation
+  ↓
+Native capability inventory
+  ↓
+Professional baseline evaluator
+  ├─ already satisfied by VS Code default → no write
+  ├─ explicit developer value → preserve
+  └─ missing professional baseline → apply after explicit command
+  ↓
+Repository stack detection
+  ↓
+Stack-aware watcher/search optimization
+  ↓
+Capability gap analysis
+  ↓
+Minimal extension recommendations
+```
+
+The Workstation Engine is deliberately separate from repository baseline generation. User-level workstation initialization does not change themes, keybindings, accounts, AI providers, Git identity or extension-specific settings.

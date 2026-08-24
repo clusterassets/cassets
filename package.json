@@ -1,8 +1,8 @@
 {
   "name": "cassets",
   "displayName": "CAssets DevReady — Clone. Open. Code.",
-  "description": "Turn VS Code and any repository into a professionally prepared developer workspace. CAssets DevReady detects the stack, recommends the right capabilities, prepares safe baselines, and guides contributors to the first successful build.",
-  "version": "0.6.1",
+  "description": "Native-first VS Code workstation and repository readiness engine. CAssets DevReady applies a safe professional baseline, minimizes extension dependency, detects project requirements, and guides contributors to the first successful build.",
+  "version": "0.7.0",
   "publisher": "clusterassets",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -62,7 +62,12 @@
     "workspace",
     "workspace intelligence",
     "workspace orchestration",
-    "zero config"
+    "zero config",
+    "native first",
+    "native capabilities",
+    "vscode performance",
+    "workstation optimizer",
+    "lightweight vscode"
   ],
   "main": "./src/extension.js",
   "activationEvents": [
@@ -97,6 +102,22 @@
       {
         "command": "cassets.applyProfessionalSettings",
         "title": "CAssets: Apply Professional User Settings"
+      },
+      {
+        "command": "cassets.initializeWorkstation",
+        "title": "CAssets: Initialize Developer Workstation"
+      },
+      {
+        "command": "cassets.workstationHealth",
+        "title": "CAssets: Workstation Health"
+      },
+      {
+        "command": "cassets.nativeCapabilityAudit",
+        "title": "CAssets: Native Capability Audit"
+      },
+      {
+        "command": "cassets.optimizeWorkspacePerformance",
+        "title": "CAssets: Optimize Workspace Performance"
       },
       {
         "command": "cassets.bootstrapWorkspace",
@@ -316,6 +337,16 @@
           "type": "boolean",
           "default": true,
           "description": "Prefer a detected development task over build/test for Run Recommended Task."
+        },
+        "cassets.workstation.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the native-first workstation engine and workstation health commands."
+        },
+        "cassets.workstation.optimizeWorkspacePerformance": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow explicit stack-aware workspace watcher/search optimization. Existing workspace settings are preserved."
         }
       }
     }

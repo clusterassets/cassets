@@ -18,7 +18,18 @@ Runtime, package-manager, tooling ownership, environment discovery and richer he
 ## v0.6 — Contributor & Workspace Orchestrator
 Prerequisite checks, contributor onboarding, first-run recommendations and Node workspace graphs.
 
-## Planned v0.7 — Multi-Language Graph & Verification Engine
+## v0.7 — Native-First Workstation Engine
+
+- professional VS Code user baseline for fresh/corporate machines
+- existing explicit user settings preserved as developer-owned
+- native capability inventory and coverage indicator
+- extension-gap reporting instead of extension-pack behavior
+- stack-aware watcher/search exclusions for repository performance
+- workstation health view
+- non-blocking first-run consent lifecycle
+- CI/release workflow alignment with protected `main` and tag-based Marketplace publication
+
+## Planned v0.8 — Multi-Language Graph & Verification Engine
 
 Planned:
 
@@ -30,7 +41,6 @@ Planned:
 - dependency-aware build/test ordering
 - explicit build/test success verification
 - Project Health verification state
-- Workstation Engine improvements for fresh VS Code
 
 ## Future direction
 
