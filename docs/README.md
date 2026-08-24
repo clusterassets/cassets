@@ -14,3 +14,5 @@
 10. [Release and Publishing](RELEASE-AND-PUBLISHING.md)
 11. [Repository Setup](REPOSITORY-SETUP.md)
 12. [Roadmap](ROADMAP.md)
+
+- [Workstation Engine](WORKSTATION-ENGINE.md) — native-first VS Code setup for fresh/corporate machines.

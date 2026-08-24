@@ -17,7 +17,7 @@ if (!/^\d+\.\d+\.\d+$/.test(pkg.version)) {
 for (const file of ['README.md', 'CHANGELOG.md', 'LICENSE', 'SECURITY.md', 'CONTRIBUTING.md', '.vscodeignore', 'images/icon.png']) {
   if (!fs.existsSync(path.join(root, file))) throw new Error(`Missing Marketplace file: ${file}`);
 }
-for (const file of ['src/extension.js', 'src/modules/detectors.js', 'src/modules/templates.js', 'src/modules/policy.js', 'src/modules/workspace.js', 'src/modules/intelligence.js', 'src/modules/intelligence-core.js', 'src/modules/capabilities.js', 'src/modules/prerequisites.js', 'src/modules/workspace-graph.js', 'src/modules/workspace-graph-core.js', 'src/modules/onboarding.js']) {
+for (const file of ['src/extension.js', 'src/modules/detectors.js', 'src/modules/templates.js', 'src/modules/policy.js', 'src/modules/workspace.js', 'src/modules/intelligence.js', 'src/modules/intelligence-core.js', 'src/modules/capabilities.js', 'src/modules/prerequisites.js', 'src/modules/workspace-graph.js', 'src/modules/workspace-graph-core.js', 'src/modules/onboarding.js', 'src/modules/workstation.js', 'src/modules/workstation-core.js']) {
   if (!fs.existsSync(path.join(root, file))) throw new Error(`Missing runtime file: ${file}`);
 }
 console.log('CAssets Marketplace validation passed.');

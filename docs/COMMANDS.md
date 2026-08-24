@@ -2,7 +2,11 @@
 
 | Command | Description |
 |---|---|
-| `CAssets: Apply Professional User Settings` | Apply conservative user-level VS Code defaults |
+| `CAssets: Initialize Developer Workstation` | Apply the native-first professional VS Code baseline while preserving explicit user choices |
+| `CAssets: Workstation Health` | Inspect baseline alignment, native defaults and preserved developer-owned settings |
+| `CAssets: Native Capability Audit` | Show capabilities already supplied by VS Code and unresolved repository-specific extension gaps |
+| `CAssets: Optimize Workspace Performance` | Add stack-aware watcher/search exclusions when the workspace does not already own those settings |
+| `CAssets: Apply Professional User Settings` | Compatibility alias for workstation initialization |
 | `CAssets: Apply Recommended Workspace Setup` | Create safe missing project/workspace baselines |
 | `CAssets: Restore Missing Generated Templates` | Explicitly restore initialized templates |
 | `CAssets: Re-scan Workspace` | Re-run repository detection |
