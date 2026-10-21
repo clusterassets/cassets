@@ -813,7 +813,7 @@ async function activate(context) {
     vscode.commands.registerCommand('cassets.openManifest', openManifest),
     vscode.commands.registerCommand('cassets.extensionAudit', extensionAudit),
     vscode.commands.registerCommand('cassets.showIntelligence', showIntelligence),
-    vscode.commands.registerCommand('cassets.projectUnderstanding', () => openProjectUnderstanding(inspectFolder, folder => fullInspection(folder, true))),
+    vscode.commands.registerCommand('cassets.projectUnderstanding', () => openProjectUnderstanding(inspectFolder, folder => fullInspection(folder, true), folder => fullInspection(folder, false))),
     vscode.commands.registerCommand('cassets.showEnvironmentVariables', showEnvironmentVariables),
     vscode.commands.registerCommand('cassets.refreshEnvExample', refreshEnvExample),
     vscode.commands.registerCommand('cassets.howToRun', howToRun),
