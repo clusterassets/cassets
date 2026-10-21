@@ -100,6 +100,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;bord
 td{overflow-wrap:anywhere}code{font-family:var(--vscode-editor-font-family)}.actions{display:flex;flex-wrap:wrap}
 </style></head><body>
 <header><div><div class="eyebrow muted">CAssets / Project Understanding</div><h1>${escapeHtml(model.name)}</h1><p class="muted">Read-only project overview. Commands remain available in the Command Palette.</p></div><button data-action="refresh">Refresh</button></header>
+<div class="actions">${folders.length > 1 ? '<label for="folder-select">Project: </label><select id="folder-select">' + folders.map((f, i) => '<option value="' + i + '"' + (f.name === model.name ? ' selected' : '') + '>' + escapeHtml(f.name) + '</option>').join('') + '</select>' : ''}</div>
 <div class="grid">
 <section><h2>Detected stack</h2>${tags(model.languages)}<h2>Frameworks and tools</h2>${tags(model.frameworks)}</section>
 <section><h2>Runtime requirements</h2><ul>${runtime}</ul><p>Workspace: ${model.monorepo ? 'Monorepo detected' : 'Single workspace or undetermined'}</p></section>
