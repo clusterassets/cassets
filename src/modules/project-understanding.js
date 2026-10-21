@@ -5,6 +5,8 @@ const doctor = require('./workspace-doctor');
 
 const ACTIONS = Object.freeze({
   refresh: null,
+  doctor: null,
+  copy: null,
   health: 'cassets.projectHealth',
   run: 'cassets.runRecommended',
   guide: 'cassets.showOnboarding',
