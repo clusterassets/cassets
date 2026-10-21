@@ -4,6 +4,7 @@ const vscode = require('vscode');
 const doctor = require('./workspace-doctor');
 const verification = require('./doctor-verification');
 const prerequisites = require('./prerequisites');
+const { inventory } = require('./command-inventory');
 
 const ACTIONS = Object.freeze({
   refresh: null,
@@ -74,11 +75,14 @@ function doctorSection(report) {
     '</section>';
 }
 
-function render(model, nonce, report = null, folders = []) {
+function render(model, nonce, report = null, folders = [], commands = []) {
   const tags = items => items.length ? items.map(x => '<span class="tag">' + escapeHtml(x) + '</span>').join('') : '<span class="muted">Not detected</span>';
   const rows = model.scripts.length ? model.scripts.map(x =>
     '<tr><th scope="row">' + escapeHtml(x.name) + '</th><td><code>' + escapeHtml(x.command) + '</code></td></tr>'
   ).join('') : '<tr><td colspan="2">No package scripts detected</td></tr>';
+  const commandRows = commands.map(x => '<tr><th scope="row">' + escapeHtml(x.root ? 'Root' : x.packageName) +
+    '</th><td>' + escapeHtml(x.name) + '</td><td><code>' + escapeHtml(x.command) +
+    '</code></td><td>' + escapeHtml(x.delegatedTo ? 'Delegates to ' + x.delegatedTo.package + ':' + x.delegatedTo.script : x.risk) + '</td></tr>').join('');
   const runtime = model.runtime.length ? model.runtime.map(x =>
     '<li><strong>' + escapeHtml(x.name) + '</strong> ' + escapeHtml(x.value) + '</li>'
   ).join('') : '<li>Runtime versions not declared</li>';
@@ -111,6 +115,7 @@ td{overflow-wrap:anywhere}code{font-family:var(--vscode-editor-font-family)}.act
 <section><h2>Code quality</h2><p>Formatter: <strong>${escapeHtml(model.formatter)}</strong></p><p>Linter: <strong>${escapeHtml(model.linter)}</strong></p><p>Tests: ${tags(model.tests)}</p></section>
 </div>
 ${doctorSection(report)}
+<section><h2>Discovered workspace commands</h2><p class="muted">Root and package commands are shown independently. Discovery never runs commands.</p><table><thead><tr><th>Origin</th><th>Script</th><th>Command</th><th>Classification</th></tr></thead><tbody>${commandRows || '<tr><td colspan="4">No workspace commands discovered</td></tr>'}</tbody></table></section>
 <section><h2>Available repository scripts</h2><table><thead><tr><th>Script</th><th>Command</th></tr></thead><tbody>${rows}</tbody></table><p class="muted">Commands are shown for inspection, not executed automatically.</p></section>
 <section style="margin-top:14px"><h2>Developer actions</h2><div class="actions">${buttons}</div><p class="muted">Run Recommended requires confirmation. Workspace setup can change files and is deliberately separate.</p><button data-action="setup">Apply workspace setup…</button></section>
 <script nonce="${nonce}">const vscode=acquireVsCodeApi();document.querySelectorAll('button[data-action]').forEach(button=>button.addEventListener('click',()=>vscode.postMessage({action:button.dataset.action})));document.querySelectorAll('button[data-filter]').forEach(button=>button.addEventListener('click',()=>document.querySelectorAll('.finding').forEach(item=>item.hidden=button.dataset.filter!=='all'&&item.dataset.severity!==button.dataset.filter)));document.querySelectorAll('button[data-verify]').forEach(button=>button.addEventListener('click',()=>vscode.postMessage({action:'verify',id:button.dataset.verify})));document.querySelectorAll('button[data-source]').forEach(button=>button.addEventListener('click',()=>vscode.postMessage({action:'source',id:button.dataset.source})));document.getElementById('folder-select')?.addEventListener('change',event=>vscode.postMessage({action:'folder',index:Number(event.target.value)}));document.querySelectorAll('button[data-copy]').forEach(button=>button.addEventListener('click',()=>vscode.postMessage({action:'copy',id:button.dataset.copy})));</script>
@@ -132,7 +137,9 @@ async function openProjectUnderstanding(inspectFolder, inspectDoctor, inspectGra
     try {
       const { stack, intelligence } = await inspectFolder(folder);
       currentModel = viewModel(folder, stack, intelligence);
-      panel.webview.html = render(currentModel, nonce, report, folders);
+      const graphResult = await inspectGraph(folder);
+      const commands = inventory(graphResult.workspaceGraph?.packages || [{ path: '.', name: stack.package?.name || '(root)', scripts: stack.scripts || {} }]);
+      panel.webview.html = render(currentModel, nonce, report, folders, commands);
     } catch (error) {
       vscode.window.showErrorMessage('CAssets: project inspection failed: ' + error.message);
     }
