@@ -104,6 +104,10 @@
         "title": "CAssets: Open Project Overview"
       },
       {
+        "command": "cassets.runWorkspaceDoctor",
+        "title": "CAssets: Run Workspace Doctor"
+      },
+      {
         "command": "cassets.applyProfessionalSettings",
         "title": "CAssets: Apply Professional User Settings"
       },
