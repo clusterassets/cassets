@@ -7,6 +7,8 @@ const ACTIONS = Object.freeze({
   refresh: null,
   doctor: null,
   copy: null,
+  source: null,
+  folder: null,
   health: 'cassets.projectHealth',
   run: 'cassets.runRecommended',
   guide: 'cassets.showOnboarding',
@@ -38,6 +40,13 @@ function viewModel(folder, stack, intelligence) {
     tests: intelligence.summary?.testFrameworks || [] };
 }
 
+const SOURCES = Object.freeze({
+  'runtime.node.mismatch': 'package.json',
+  'runtime.node.unverified': 'package.json'
+});
+function sourceFor(id) {
+  return Object.prototype.hasOwnProperty.call(SOURCES, id) ? SOURCES[id] : null;
+}
 function doctorSection(report) {
   if (!report) return '<section id="doctor"><h2>Workspace Doctor</h2><p class="muted">Run diagnostics to inspect local prerequisites and workspace issues.</p><button data-action="doctor">Run Workspace Doctor</button></section>';
   const counts = report.counts || { error: 0, warning: 0, info: 0 };
@@ -47,11 +56,13 @@ function doctorSection(report) {
       escapeHtml(severity.toUpperCase()) + '</span> ' + escapeHtml(d.title) + '</summary>' +
       '<p>' + escapeHtml(d.detail) + '</p><p><strong>Evidence:</strong> ' + escapeHtml(d.evidence) +
       '</p><p><strong>Recommended:</strong> ' + escapeHtml(d.remediation) + '</p>' +
-      '<button data-copy="' + escapeHtml(d.id) + '">Copy guidance</button></details>';
+      '<button data-copy="' + escapeHtml(d.id) + '">Copy guidance</button>' +
+      (sourceFor(d.id) ? '<button data-source="' + escapeHtml(d.id) + '">Open source</button>' : '') +
+      (d.lifecycle ? '<span class="muted"> ' + escapeHtml(d.lifecycle) + '</span>' : '') + '</details>';
   }).join('');
   return '<section id="doctor"><h2>Workspace Doctor</h2><p>' +
     counts.error + ' errors · ' + counts.warning + ' warnings · ' + counts.info +
-    ' informational · ' + Number(report.checked || 0) + ' tool checks</p>' +
+    ' informational · ' + Number(report.checked || 0) + ' tool checks · ' + Number(report.resolved || 0) + ' resolved since previous run</p>' +
     '<div class="actions"><button data-filter="all">All</button><button data-filter="error">Errors</button>' +
     '<button data-filter="warning">Warnings</button><button data-filter="info">Info</button>' +
     '<button data-action="doctor">Re-run diagnostics</button></div>' +
@@ -59,7 +70,7 @@ function doctorSection(report) {
     '</section>';
 }
 
-function render(model, nonce, report = null) {
+function render(model, nonce, report = null, folders = []) {
   const tags = items => items.length ? items.map(x => '<span class="tag">' + escapeHtml(x) + '</span>').join('') : '<span class="muted">Not detected</span>';
   const rows = model.scripts.length ? model.scripts.map(x =>
     '<tr><th scope="row">' + escapeHtml(x.name) + '</th><td><code>' + escapeHtml(x.command) + '</code></td></tr>'
@@ -89,6 +100,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;bord
 td{overflow-wrap:anywhere}code{font-family:var(--vscode-editor-font-family)}.actions{display:flex;flex-wrap:wrap}
 </style></head><body>
 <header><div><div class="eyebrow muted">CAssets / Project Understanding</div><h1>${escapeHtml(model.name)}</h1><p class="muted">Read-only project overview. Commands remain available in the Command Palette.</p></div><button data-action="refresh">Refresh</button></header>
+<div class="actions">${folders.length > 1 ? '<label for="folder-select">Project: </label><select id="folder-select">' + folders.map((f, i) => '<option value="' + i + '"' + (f.name === model.name ? ' selected' : '') + '>' + escapeHtml(f.name) + '</option>').join('') + '</select>' : ''}</div>
 <div class="grid">
 <section><h2>Detected stack</h2>${tags(model.languages)}<h2>Frameworks and tools</h2>${tags(model.frameworks)}</section>
 <section><h2>Runtime requirements</h2><ul>${runtime}</ul><p>Workspace: ${model.monorepo ? 'Monorepo detected' : 'Single workspace or undetermined'}</p></section>
@@ -97,23 +109,25 @@ td{overflow-wrap:anywhere}code{font-family:var(--vscode-editor-font-family)}.act
 ${doctorSection(report)}
 <section><h2>Available repository scripts</h2><table><thead><tr><th>Script</th><th>Command</th></tr></thead><tbody>${rows}</tbody></table><p class="muted">Commands are shown for inspection, not executed automatically.</p></section>
 <section style="margin-top:14px"><h2>Developer actions</h2><div class="actions">${buttons}</div><p class="muted">Run Recommended requires confirmation. Workspace setup can change files and is deliberately separate.</p><button data-action="setup">Apply workspace setup…</button></section>
-<script nonce="${nonce}">const vscode=acquireVsCodeApi();document.querySelectorAll('button[data-action]').forEach(button=>button.addEventListener('click',()=>vscode.postMessage({action:button.dataset.action})));document.querySelectorAll('button[data-filter]').forEach(button=>button.addEventListener('click',()=>document.querySelectorAll('.finding').forEach(item=>item.hidden=button.dataset.filter!=='all'&&item.dataset.severity!==button.dataset.filter)));document.querySelectorAll('button[data-copy]').forEach(button=>button.addEventListener('click',()=>vscode.postMessage({action:'copy',id:button.dataset.copy})));</script>
+<script nonce="${nonce}">const vscode=acquireVsCodeApi();document.querySelectorAll('button[data-action]').forEach(button=>button.addEventListener('click',()=>vscode.postMessage({action:button.dataset.action})));document.querySelectorAll('button[data-filter]').forEach(button=>button.addEventListener('click',()=>document.querySelectorAll('.finding').forEach(item=>item.hidden=button.dataset.filter!=='all'&&item.dataset.severity!==button.dataset.filter)));document.querySelectorAll('button[data-source]').forEach(button=>button.addEventListener('click',()=>vscode.postMessage({action:'source',id:button.dataset.source})));document.getElementById('folder-select')?.addEventListener('change',event=>vscode.postMessage({action:'folder',index:Number(event.target.value)}));document.querySelectorAll('button[data-copy]').forEach(button=>button.addEventListener('click',()=>vscode.postMessage({action:'copy',id:button.dataset.copy})));</script>
 </body></html>`;
 }
 
 async function openProjectUnderstanding(inspectFolder, inspectDoctor) {
-  const folder = vscode.workspace.workspaceFolders?.[0];
+  const folders = vscode.workspace.workspaceFolders || [];
+  let folder = folders[0];
   if (!folder) { vscode.window.showInformationMessage('CAssets: open a workspace to understand its project.'); return; }
   const panel = vscode.window.createWebviewPanel('cassets.projectUnderstanding', 'CAssets · ' + folder.name,
     vscode.ViewColumn.One, { enableScripts: true, retainContextWhenHidden: false });
   const nonce = require('crypto').randomBytes(16).toString('hex');
   let report = null;
   let currentModel = null;
+  let previousIds = new Set();
   const refresh = async () => {
     try {
       const { stack, intelligence } = await inspectFolder(folder);
       currentModel = viewModel(folder, stack, intelligence);
-      panel.webview.html = render(currentModel, nonce, report);
+      panel.webview.html = render(currentModel, nonce, report, folders);
     } catch (error) {
       vscode.window.showErrorMessage('CAssets: project inspection failed: ' + error.message);
     }
@@ -122,11 +136,38 @@ async function openProjectUnderstanding(inspectFolder, inspectDoctor) {
     if (!message || typeof message.action !== 'string' ||
         !Object.prototype.hasOwnProperty.call(ACTIONS, message.action)) return;
     if (message.action === 'refresh') { await refresh(); return; }
+    if (message.action === 'folder') {
+      if (!Number.isInteger(message.index) || message.index < 0 || message.index >= folders.length) return;
+      folder = folders[message.index];
+      report = null;
+      previousIds = new Set();
+      panel.title = 'CAssets · ' + folder.name;
+      await refresh();
+      return;
+    }
+    if (message.action === 'source') {
+      const finding = report?.diagnostics?.find(d => d.id === message.id);
+      const relative = finding && sourceFor(finding.id);
+      if (!relative) return;
+      const uri = vscode.Uri.joinPath(folder.uri, relative);
+      try {
+        const document = await vscode.workspace.openTextDocument(uri);
+        await vscode.window.showTextDocument(document, { preview: true });
+      } catch {
+        vscode.window.showWarningMessage('CAssets: source file is unavailable: ' + relative);
+      }
+      return;
+    }
     if (message.action === 'doctor') {
       if (!vscode.workspace.isTrusted) { vscode.window.showWarningMessage('CAssets: Workspace Doctor requires Workspace Trust.'); return; }
       try {
         const inspected = await inspectDoctor(folder);
-        report = doctor.diagnose(inspected.stack, inspected.intelligence, inspected.prerequisites, inspected.workspaceGraph);
+        const next = doctor.diagnose(inspected.stack, inspected.intelligence, inspected.prerequisites, inspected.workspaceGraph);
+        const nextIds = new Set(next.diagnostics.map(d => d.id));
+        next.resolved = [...previousIds].filter(id => !nextIds.has(id)).length;
+        next.diagnostics = next.diagnostics.map(d => ({ ...d, lifecycle: previousIds.has(d.id) ? 'Persistent' : 'New' }));
+        previousIds = nextIds;
+        report = next;
         await refresh();
       } catch (error) { vscode.window.showErrorMessage('CAssets: Workspace Doctor failed: ' + error.message); }
       return;
@@ -151,4 +192,4 @@ async function openProjectUnderstanding(inspectFolder, inspectDoctor) {
   await refresh();
 }
 
-module.exports = { openProjectUnderstanding, viewModel, escapeHtml, render, doctorSection };
+module.exports = { openProjectUnderstanding, viewModel, escapeHtml, render, doctorSection, sourceFor };

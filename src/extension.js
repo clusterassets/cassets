@@ -757,8 +757,8 @@ function registerWatcher(context) {
 }
 
 async function runWorkspaceDoctor() {
-  const folder = vscode.workspace.workspaceFolders?.[0];
-  if (!folder) {
+  const folders = vscode.workspace.workspaceFolders || [];
+  if (!folders.length) {
     vscode.window.showInformationMessage('CAssets: open a workspace before running Workspace Doctor.');
     return;
   }
@@ -766,7 +766,9 @@ async function runWorkspaceDoctor() {
     vscode.window.showWarningMessage('CAssets: Workspace Doctor requires Workspace Trust for local tool checks.');
     return;
   }
-  const inspected = await fullInspection(folder, true);
+  const selected = folders.length === 1 ? folders[0] : (await vscode.window.showQuickPick(folders.map(folder => ({ label: folder.name, folder })), { placeHolder: 'Select workspace folder to diagnose' }))?.folder;
+  if (!selected) return;
+  const inspected = await fullInspection(selected, true);
   const result = doctor.diagnose(inspected.stack, inspected.intelligence,
     inspected.prerequisites, inspected.workspaceGraph);
   const items = result.diagnostics.map(d => ({
