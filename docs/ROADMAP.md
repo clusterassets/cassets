@@ -52,3 +52,20 @@ Potential:
 - framework adapters
 - team/organization policy packs
 - optional enterprise governance while keeping the open-source core useful
+
+## Release safety: purpose-driven project files
+
+- Opening, rescanning, and trusting a workspace are inspection-only operations, regardless of the legacy `cassets.mode` value.
+- Repository file generation requires an explicit developer command; existing project files remain developer-owned.
+- Each proposed file must have a documented consumer, concrete purpose, necessity, ownership model, and verification path.
+- `.cassets/` project intelligence and policies are optional and require deliberate initialization. Local indexes are preferred to committed generated artifacts.
+- `AGENTS.md`, `CONTRIBUTING.md`, skills, and Tree-sitter-backed indexes must not be created without a concrete use case and an identified consumer.
+
+## Proposed product pillars (implementation pending)
+
+1. Project Understanding: read-only stack, entry-point, script, and dependency discovery.
+2. Workspace Doctor: actionable prerequisite and configuration diagnosis.
+3. Run/Test/Debug: reuse existing commands and VS Code native facilities; verify outcomes.
+4. Change Impact: source-linked impact analysis with bounded, incremental indexing.
+
+Future agent integration may expose bounded code context and policy checks. Index summaries must never replace source-level verification. New parser or MCP dependencies require a separate design and performance review.

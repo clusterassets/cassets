@@ -160,7 +160,7 @@ async function bootstrapFolder(folder, { restore = false, explicit = false } = {
   if (!vscode.workspace.isTrusted) return { folder, stack, intelligence, restricted: true, changed: false };
 
   const mode = cassetsConfig().get('mode', 'review');
-  if (!explicit && mode !== 'auto') {
+  if (!explicit) {
     await updateHealthStatus(folder, stack, intelligence);
     return { folder, stack, intelligence, restricted: false, changed: false };
   }
@@ -780,13 +780,10 @@ async function activate(context) {
     vscode.commands.registerCommand('cassets.runRecommended', runRecommended),
     vscode.commands.registerCommand('cassets.showOnboarding', showOnboarding),
     vscode.workspace.onDidChangeWorkspaceFolders(() => bootstrapAll()),
-    vscode.workspace.onDidGrantWorkspaceTrust(() => firstRunConsent(context))
+    vscode.workspace.onDidGrantWorkspaceTrust(() => bootstrapAll())
   );
 
   registerWatcher(context);
-  void firstRunConsent(context).catch(error => {
-    console.error('[CAssets] first-run consent failed', error);
-  });
   await bootstrapAll();
 
   const folder = vscode.workspace.workspaceFolders?.[0];
