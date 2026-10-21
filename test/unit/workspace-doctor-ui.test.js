@@ -10,6 +10,7 @@ vm.runInNewContext(source, {
   module: shim,
   require: name => {
     if (name === 'vscode') return { workspace: {}, window: {} };
+    if (name === './command-inventory') return { inventory: () => [] };
     if (name === './doctor-verification') return { scopeFor: () => null };
     if (name === './prerequisites') return { checkCommand() {} };
     if (name === './workspace-doctor') return { diagnose() {} };
