@@ -1,8 +1,8 @@
 'use strict';
 
 function parseVersion(value) {
-  const match = String(value || '').match(/(?:^|\D)v?(\d+)\.(\d+)(?:\.(\d+))?/);
-  return match ? [Number(match[1]), Number(match[2]), Number(match[3] || 0)] : null;
+  const match = String(value || '').match(/(?:^|[^\d])v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?![\d.])/);
+  return match ? [Number(match[1]), Number(match[2] || 0), Number(match[3] || 0)] : null;
 }
 function compare(a, b) {
   for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] > b[i] ? 1 : -1;
