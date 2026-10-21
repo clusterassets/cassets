@@ -100,6 +100,10 @@
   "contributes": {
     "commands": [
       {
+        "command": "cassets.projectUnderstanding",
+        "title": "CAssets: Open Project Overview"
+      },
+      {
         "command": "cassets.applyProfessionalSettings",
         "title": "CAssets: Apply Professional User Settings"
       },
@@ -349,6 +353,13 @@
           "description": "Allow explicit stack-aware workspace watcher/search optimization. Existing workspace settings are preserved."
         }
       }
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "cassets.projectUnderstanding"
+        }
+      ]
     }
   }
 }
