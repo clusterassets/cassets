@@ -5,6 +5,92 @@ function normalizeWorkspacePatterns(workspaces) {
   return [];
 }
 
+
+function workspacePatternMatches(relativePath, patterns) {
+  const path = String(relativePath || '').replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/$/, '');
+  if (!path || path === '.' || path.split('/').some(part => part === '..' || !part)) return false;
+  let included = false;
+  for (const pattern of normalizeWorkspacePatterns(patterns)) {
+    if (typeof pattern !== 'string') continue;
+    const excluded = pattern.startsWith('!');
+    const normalized = (excluded ? pattern.slice(1) : pattern).replace(/^\.\//, '').replace(/\/$/, '');
+    if (!normalized || normalized.startsWith('/') || normalized.split('/').includes('..')) continue;
+    const escape = value => value.replace(/[|\\{}()[\]^$+?.]/g, '\\function dependencyNames');
+    const regex = new RegExp('^' + normalized.split('/').map(segment =>
+      segment === '**' ? '.*' : segment.split('*').map(escape).join('[^/]*')
+    ).join('/') + '(pkg = {}) {
+  return new Set([
+    ...Object.keys(pkg.dependencies || {}),
+    ...Object.keys(pkg.devDependencies || {}),
+    ...Object.keys(pkg.peerDependencies || {}),
+    ...Object.keys(pkg.optionalDependencies || {})
+  ]);
+}
+
+function buildGraph(packages) {
+  const byName = new Map();
+  for (const pkg of packages) {
+    if (pkg.name) byName.set(pkg.name, pkg);
+  }
+
+  const nodes = packages.map(pkg => ({
+    name: pkg.name || pkg.path,
+    path: pkg.path,
+    private: !!pkg.private
+  }));
+
+  const edges = [];
+  for (const pkg of packages) {
+    const from = pkg.name || pkg.path;
+    for (const dep of dependencyNames(pkg)) {
+      if (byName.has(dep)) edges.push({ from, to: dep });
+    }
+  }
+
+  const outgoing = new Map(nodes.map(n => [n.name, []]));
+  for (const edge of edges) outgoing.get(edge.from)?.push(edge.to);
+
+  return { nodes, edges, outgoing: Object.fromEntries(outgoing) };
+}
+
+function topologicalOrder(graph) {
+  const indegree = new Map(graph.nodes.map(n => [n.name, 0]));
+  for (const edge of graph.edges) indegree.set(edge.to, (indegree.get(edge.to) || 0) + 1);
+
+  const queue = [...indegree.entries()].filter(([, n]) => n === 0).map(([n]) => n).sort();
+  const out = [];
+  const adj = new Map(graph.nodes.map(n => [n.name, []]));
+  for (const edge of graph.edges) adj.get(edge.from)?.push(edge.to);
+
+  while (queue.length) {
+    const current = queue.shift();
+    out.push(current);
+    for (const next of adj.get(current) || []) {
+      indegree.set(next, indegree.get(next) - 1);
+      if (indegree.get(next) === 0) queue.push(next);
+    }
+    queue.sort();
+  }
+
+  return {
+    order: out,
+    cyclic: out.length !== graph.nodes.length
+  };
+}
+
+module.exports = {
+  normalizeWorkspacePatterns,
+  workspacePatternMatches,
+  dependencyNames,
+  buildGraph,
+  topologicalOrder
+};
+);
+    if (regex.test(path)) included = !excluded;
+  }
+  return included;
+}
+
 function dependencyNames(pkg = {}) {
   return new Set([
     ...Object.keys(pkg.dependencies || {}),
