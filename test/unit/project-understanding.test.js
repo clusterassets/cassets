@@ -11,6 +11,8 @@ vm.runInNewContext(source, {
   module: moduleShim,
   require: name => {
     if (name === 'vscode') return { workspace: {}, window: {} };
+    if (name === './doctor-verification') return { scopeFor: () => null };
+    if (name === './prerequisites') return { checkCommand() {} };
     if (name === './workspace-doctor') return { diagnose() {} };
     if (name === 'crypto') return require('node:crypto');
     throw new Error('Unexpected dependency: ' + name);
