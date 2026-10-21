@@ -1,4 +1,5 @@
 const vscode = require('vscode');
+const { openProjectUnderstanding } = require('./modules/project-understanding');
 const { detect } = require('./modules/detectors');
 const { analyze } = require('./modules/intelligence');
 const templates = require('./modules/templates');
@@ -772,6 +773,7 @@ async function activate(context) {
     vscode.commands.registerCommand('cassets.openManifest', openManifest),
     vscode.commands.registerCommand('cassets.extensionAudit', extensionAudit),
     vscode.commands.registerCommand('cassets.showIntelligence', showIntelligence),
+    vscode.commands.registerCommand('cassets.projectUnderstanding', () => openProjectUnderstanding(inspectFolder)),
     vscode.commands.registerCommand('cassets.showEnvironmentVariables', showEnvironmentVariables),
     vscode.commands.registerCommand('cassets.refreshEnvExample', refreshEnvExample),
     vscode.commands.registerCommand('cassets.howToRun', howToRun),
