@@ -2,12 +2,15 @@
 
 const vscode = require('vscode');
 const doctor = require('./workspace-doctor');
+const verification = require('./doctor-verification');
+const prerequisites = require('./prerequisites');
 
 const ACTIONS = Object.freeze({
   refresh: null,
   doctor: null,
   copy: null,
   source: null,
+  verify: null,
   folder: null,
   health: 'cassets.projectHealth',
   run: 'cassets.runRecommended',
@@ -57,6 +60,7 @@ function doctorSection(report) {
       '<p>' + escapeHtml(d.detail) + '</p><p><strong>Evidence:</strong> ' + escapeHtml(d.evidence) +
       '</p><p><strong>Recommended:</strong> ' + escapeHtml(d.remediation) + '</p>' +
       '<button data-copy="' + escapeHtml(d.id) + '">Copy guidance</button>' +
+      (verification.scopeFor(d.id) ? '<button data-verify="' + escapeHtml(d.id) + '">Verify fix</button>' : '') +
       (sourceFor(d.id) ? '<button data-source="' + escapeHtml(d.id) + '">Open source</button>' : '') +
       (d.lifecycle ? '<span class="muted"> ' + escapeHtml(d.lifecycle) + '</span>' : '') + '</details>';
   }).join('');
@@ -109,11 +113,11 @@ td{overflow-wrap:anywhere}code{font-family:var(--vscode-editor-font-family)}.act
 ${doctorSection(report)}
 <section><h2>Available repository scripts</h2><table><thead><tr><th>Script</th><th>Command</th></tr></thead><tbody>${rows}</tbody></table><p class="muted">Commands are shown for inspection, not executed automatically.</p></section>
 <section style="margin-top:14px"><h2>Developer actions</h2><div class="actions">${buttons}</div><p class="muted">Run Recommended requires confirmation. Workspace setup can change files and is deliberately separate.</p><button data-action="setup">Apply workspace setup…</button></section>
-<script nonce="${nonce}">const vscode=acquireVsCodeApi();document.querySelectorAll('button[data-action]').forEach(button=>button.addEventListener('click',()=>vscode.postMessage({action:button.dataset.action})));document.querySelectorAll('button[data-filter]').forEach(button=>button.addEventListener('click',()=>document.querySelectorAll('.finding').forEach(item=>item.hidden=button.dataset.filter!=='all'&&item.dataset.severity!==button.dataset.filter)));document.querySelectorAll('button[data-source]').forEach(button=>button.addEventListener('click',()=>vscode.postMessage({action:'source',id:button.dataset.source})));document.getElementById('folder-select')?.addEventListener('change',event=>vscode.postMessage({action:'folder',index:Number(event.target.value)}));document.querySelectorAll('button[data-copy]').forEach(button=>button.addEventListener('click',()=>vscode.postMessage({action:'copy',id:button.dataset.copy})));</script>
+<script nonce="${nonce}">const vscode=acquireVsCodeApi();document.querySelectorAll('button[data-action]').forEach(button=>button.addEventListener('click',()=>vscode.postMessage({action:button.dataset.action})));document.querySelectorAll('button[data-filter]').forEach(button=>button.addEventListener('click',()=>document.querySelectorAll('.finding').forEach(item=>item.hidden=button.dataset.filter!=='all'&&item.dataset.severity!==button.dataset.filter)));document.querySelectorAll('button[data-verify]').forEach(button=>button.addEventListener('click',()=>vscode.postMessage({action:'verify',id:button.dataset.verify})));document.querySelectorAll('button[data-source]').forEach(button=>button.addEventListener('click',()=>vscode.postMessage({action:'source',id:button.dataset.source})));document.getElementById('folder-select')?.addEventListener('change',event=>vscode.postMessage({action:'folder',index:Number(event.target.value)}));document.querySelectorAll('button[data-copy]').forEach(button=>button.addEventListener('click',()=>vscode.postMessage({action:'copy',id:button.dataset.copy})));</script>
 </body></html>`;
 }
 
-async function openProjectUnderstanding(inspectFolder, inspectDoctor) {
+async function openProjectUnderstanding(inspectFolder, inspectDoctor, inspectGraph = inspectDoctor) {
   const folders = vscode.workspace.workspaceFolders || [];
   let folder = folders[0];
   if (!folder) { vscode.window.showInformationMessage('CAssets: open a workspace to understand its project.'); return; }
@@ -123,6 +127,7 @@ async function openProjectUnderstanding(inspectFolder, inspectDoctor) {
   let report = null;
   let currentModel = null;
   let previousIds = new Set();
+  let checking = false;
   const refresh = async () => {
     try {
       const { stack, intelligence } = await inspectFolder(folder);
@@ -137,6 +142,7 @@ async function openProjectUnderstanding(inspectFolder, inspectDoctor) {
         !Object.prototype.hasOwnProperty.call(ACTIONS, message.action)) return;
     if (message.action === 'refresh') { await refresh(); return; }
     if (message.action === 'folder') {
+      if (checking) return;
       if (!Number.isInteger(message.index) || message.index < 0 || message.index >= folders.length) return;
       folder = folders[message.index];
       report = null;
@@ -158,8 +164,24 @@ async function openProjectUnderstanding(inspectFolder, inspectDoctor) {
       }
       return;
     }
+    if (message.action === 'verify') {
+      if (!vscode.workspace.isTrusted || checking || !report?.diagnostics?.some(d => d.id === message.id)) return;
+      if (!verification.scopeFor(message.id)) return;
+      checking = true;
+      try {
+        const outcome = await verification.verify(message.id, folder, inspectFolder, inspectGraph,
+          prerequisites.checkCommand, doctor.diagnose);
+        report = verification.mergeReport(report, outcome.report, outcome.scope);
+        previousIds = new Set(report.diagnostics.map(d => d.id));
+        await refresh();
+      } catch (error) { vscode.window.showErrorMessage('CAssets: targeted verification failed: ' + error.message); }
+      finally { checking = false; }
+      return;
+    }
     if (message.action === 'doctor') {
       if (!vscode.workspace.isTrusted) { vscode.window.showWarningMessage('CAssets: Workspace Doctor requires Workspace Trust.'); return; }
+      if (checking) return;
+      checking = true;
       try {
         const inspected = await inspectDoctor(folder);
         const next = doctor.diagnose(inspected.stack, inspected.intelligence, inspected.prerequisites, inspected.workspaceGraph);
@@ -170,6 +192,7 @@ async function openProjectUnderstanding(inspectFolder, inspectDoctor) {
         report = next;
         await refresh();
       } catch (error) { vscode.window.showErrorMessage('CAssets: Workspace Doctor failed: ' + error.message); }
+      finally { checking = false; }
       return;
     }
     if (message.action === 'copy') {
