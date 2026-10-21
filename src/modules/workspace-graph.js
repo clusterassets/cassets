@@ -1,6 +1,6 @@
 const vscode = require('vscode');
 const { exists, readJson, find } = require('./utils');
-const { normalizeWorkspacePatterns, buildGraph, topologicalOrder } = require('./workspace-graph-core');
+const { normalizeWorkspacePatterns, workspacePatternMatches, buildGraph, topologicalOrder } = require('./workspace-graph-core');
 
 async function collectNodePackages(folder, rootPackage, maxPackages = 200) {
   const packages = [];
@@ -28,11 +28,16 @@ async function collectNodePackages(folder, rootPackage, maxPackages = 200) {
     if (pnpmWorkspace) manifests = await find(folder, '**/package.json', maxPackages + 1);
   }
 
-  for (const uri of manifests.slice(0, maxPackages)) {
+  let matched = 0;
+  let truncated = false;
+  for (const uri of manifests) {
     if (uri.fsPath === vscode.Uri.joinPath(folder.uri, 'package.json').fsPath) continue;
+    const rel = uri.path.slice(folder.uri.path.replace(/\/$/, '').length + 1).replace(/\\/g, '/').replace(/\/package\.json$/, '');
+    if (!workspacePatternMatches(rel, patterns)) continue;
+    matched++;
+    if (matched > maxPackages) { truncated = true; break; }
     const pkg = await readJson(uri);
     if (!pkg) continue;
-    const rel = vscode.workspace.asRelativePath(uri, false).replace(/\/package\.json$/, '').replace(/\\package\.json$/, '');
     packages.push({
       name: pkg.name || rel,
       path: rel,
@@ -47,7 +52,7 @@ async function collectNodePackages(folder, rootPackage, maxPackages = 200) {
 
   const graph = buildGraph(packages);
   const topo = topologicalOrder(graph);
-  return { packages, graph, topo, truncated: manifests.length > maxPackages };
+  return { packages, graph, topo, truncated: truncated || manifests.length > maxPackages };
 }
 
 async function analyze(folder, stack, intelligence, maxPackages = 200) {
