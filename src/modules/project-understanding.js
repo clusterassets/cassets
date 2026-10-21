@@ -142,6 +142,7 @@ async function openProjectUnderstanding(inspectFolder, inspectDoctor, inspectGra
         !Object.prototype.hasOwnProperty.call(ACTIONS, message.action)) return;
     if (message.action === 'refresh') { await refresh(); return; }
     if (message.action === 'folder') {
+      if (checking) return;
       if (!Number.isInteger(message.index) || message.index < 0 || message.index >= folders.length) return;
       folder = folders[message.index];
       report = null;
