@@ -1,4 +1,5 @@
 const vscode = require('vscode');
+const doctor = require('./modules/workspace-doctor');
 const { openProjectUnderstanding } = require('./modules/project-understanding');
 const { detect } = require('./modules/detectors');
 const { analyze } = require('./modules/intelligence');
@@ -755,6 +756,42 @@ function registerWatcher(context) {
   context.subscriptions.push(watcher);
 }
 
+async function runWorkspaceDoctor() {
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  if (!folder) {
+    vscode.window.showInformationMessage('CAssets: open a workspace before running Workspace Doctor.');
+    return;
+  }
+  if (!vscode.workspace.isTrusted) {
+    vscode.window.showWarningMessage('CAssets: Workspace Doctor requires Workspace Trust for local tool checks.');
+    return;
+  }
+  const inspected = await fullInspection(folder, true);
+  const result = doctor.diagnose(inspected.stack, inspected.intelligence,
+    inspected.prerequisites, inspected.workspaceGraph);
+  const items = result.diagnostics.map(d => ({
+    label: (d.severity === 'error' ? '$(error)' : d.severity === 'warning' ? '$(warning)' : '$(info)') + ' ' + d.title,
+    description: d.detail,
+    detail: d.evidence + ' — ' + d.remediation,
+    diagnostic: d
+  }));
+  if (!items.length) {
+    vscode.window.showInformationMessage('CAssets Workspace Doctor: no problems detected in ' + result.checked + ' tool checks. This is not a full build verification.');
+    return;
+  }
+  const picked = await vscode.window.showQuickPick(items, {
+    title: 'Workspace Doctor — ' + result.counts.error + ' errors, ' + result.counts.warning + ' warnings',
+    placeHolder: 'Select a finding to copy its suggested remediation.'
+  });
+  if (picked) {
+    const choice = await vscode.window.showInformationMessage(
+      picked.diagnostic.title + ': ' + picked.diagnostic.remediation,
+      'Copy guidance'
+    );
+    if (choice === 'Copy guidance') await vscode.env.clipboard.writeText(picked.diagnostic.remediation);
+  }
+}
+
 async function activate(context) {
   healthStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 20);
   context.subscriptions.push(healthStatusItem);
@@ -769,6 +806,7 @@ async function activate(context) {
     vscode.commands.registerCommand('cassets.restoreTemplates', () => bootstrapAll({ explicit: true, restore: true })),
     vscode.commands.registerCommand('cassets.rescanWorkspace', () => bootstrapAll()),
     vscode.commands.registerCommand('cassets.projectHealth', projectHealth),
+    vscode.commands.registerCommand('cassets.runWorkspaceDoctor', runWorkspaceDoctor),
     vscode.commands.registerCommand('cassets.showStack', showStack),
     vscode.commands.registerCommand('cassets.openManifest', openManifest),
     vscode.commands.registerCommand('cassets.extensionAudit', extensionAudit),
