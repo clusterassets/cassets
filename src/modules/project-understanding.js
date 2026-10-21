@@ -4,7 +4,7 @@ const vscode = require('vscode');
 
 const ACTIONS = Object.freeze({
   refresh: null,
-  doctor: 'cassets.checkPrerequisites',
+  doctor: 'cassets.runWorkspaceDoctor',
   health: 'cassets.projectHealth',
   run: 'cassets.runRecommended',
   guide: 'cassets.showOnboarding',
@@ -45,7 +45,7 @@ function render(model, nonce) {
     '<li><strong>' + escapeHtml(x.name) + '</strong> ' + escapeHtml(x.value) + '</li>'
   ).join('') : '<li>Runtime versions not declared</li>';
   const buttons = [
-    ['doctor', 'Check prerequisites'], ['health', 'Project health'], ['run', 'Run recommended'],
+    ['doctor', 'Workspace Doctor'], ['health', 'Project health'], ['run', 'Run recommended'],
     ['guide', 'Onboarding'], ['graph', 'Workspace graph'], ['intelligence', 'More intelligence']
   ].map(([id, label]) => '<button type="button" data-action="' + id + '">' + label + '</button>').join('');
   return `<!DOCTYPE html>
