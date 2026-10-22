@@ -25,6 +25,11 @@ async function runWorkspaceScript(folder, rootPackage, options = {}) {
     return false;
   }
   if (!folder || !rootPackage) return false;
+  const declaredManager = rootPackage.packageManager;
+  if (declaredManager && !/^npm(?:@|$)/.test(declaredManager)) {
+    vscode.window.showWarningMessage('CAssets: native workspace execution supports npm only. No command was executed.');
+    return false;
+  }
   const graph = await collectNodePackages(folder, rootPackage, options.maxPackages || 200);
   if (graph.truncated) {
     vscode.window.showWarningMessage('CAssets: workspace discovery was truncated; review the command list before running.');
