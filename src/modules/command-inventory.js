@@ -1,5 +1,5 @@
 'use strict';
-const HIGH_RISK = /(?:^|[:\-_])(install|migrat|seed|reset|deploy|publish|release|drop|destroy|bootstrap|clean)(?:$|[:\-_])/i;
+const HIGH_RISK = /(?:^|[:\-_])(install|migrate?|migration|seed|reset|deploy|publish|release|drop|destroy|bootstrap|clean)(?:$|[:\-_])/i;
 function inventory(packages, manager = 'npm') {
   const entries = [];
   for (const pkg of packages || []) {
