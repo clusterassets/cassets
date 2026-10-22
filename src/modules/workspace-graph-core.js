@@ -5,6 +5,25 @@ function normalizeWorkspacePatterns(workspaces) {
   return [];
 }
 
+
+function workspacePatternMatches(relativePath, patterns) {
+  const path = String(relativePath || '').replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/$/, '');
+  if (!path || path === '.' || path.split('/').some(part => part === '..' || !part)) return false;
+  let included = false;
+  for (const pattern of normalizeWorkspacePatterns(patterns)) {
+    if (typeof pattern !== 'string') continue;
+    const excluded = pattern.startsWith('!');
+    const normalized = (excluded ? pattern.slice(1) : pattern).replace(/^\.\//, '').replace(/\/$/, '');
+    if (!normalized || normalized.startsWith('/') || normalized.split('/').includes('..')) continue;
+    const escape = value => value.replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
+    const regex = new RegExp('^' + normalized.split('/').map(segment =>
+      segment === '**' ? '.*' : segment.split('*').map(escape).join('[^/]*')
+    ).join('/') + '$');
+    if (regex.test(path)) included = !excluded;
+  }
+  return included;
+}
+
 function dependencyNames(pkg = {}) {
   return new Set([
     ...Object.keys(pkg.dependencies || {}),
@@ -67,6 +86,7 @@ function topologicalOrder(graph) {
 
 module.exports = {
   normalizeWorkspacePatterns,
+  workspacePatternMatches,
   dependencyNames,
   buildGraph,
   topologicalOrder
