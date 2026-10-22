@@ -15,6 +15,7 @@ const ACTIONS = Object.freeze({
   folder: null,
   health: 'cassets.projectHealth',
   run: 'cassets.runRecommended',
+  runWorkspace: 'cassets.runWorkspaceScript',
   guide: 'cassets.showOnboarding',
   graph: 'cassets.showWorkspaceGraph',
   intelligence: 'cassets.showIntelligence',
@@ -87,7 +88,7 @@ function render(model, nonce, report = null, folders = [], commands = []) {
     '<li><strong>' + escapeHtml(x.name) + '</strong> ' + escapeHtml(x.value) + '</li>'
   ).join('') : '<li>Runtime versions not declared</li>';
   const buttons = [
-    ['health', 'Project health'], ['run', 'Run recommended'],
+    ['health', 'Project health'], ['runWorkspace', 'Run workspace script'], ['run', 'Run recommended'],
     ['guide', 'Onboarding'], ['graph', 'Workspace graph'], ['intelligence', 'More intelligence']
   ].map(([id, label]) => '<button type="button" data-action="' + id + '">' + label + '</button>').join('');
   return `<!DOCTYPE html>
