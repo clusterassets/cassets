@@ -520,39 +520,31 @@ async function howToRun() {
 }
 
 async function runRecommended() {
-  const folder = vscode.workspace.workspaceFolders?.[0];
+  const folders = vscode.workspace.workspaceFolders || [];
+  const folder = folders.length === 1 ? folders[0] : await vscode.window.showQuickPick(
+    folders.map(item => ({ label: item.name, description: item.uri.fsPath, folder: item })),
+    { title: 'CAssets: Select workspace folder' }
+  ).then(choice => choice?.folder);
   if (!folder) return;
-
-  const inspected = await fullInspection(folder, true);
-  if (!inspected.prerequisites.ready) {
-    vscode.window.showWarningMessage('CAssets: required developer prerequisites are missing. Run "CAssets: Check Developer Prerequisites".');
+  if (!vscode.workspace.isTrusted) {
+    vscode.window.showWarningMessage('CAssets: running workspace scripts requires Workspace Trust.');
     return;
   }
-
-  const commands = onboarding.recommendCommands(inspected.stack, inspected.intelligence, inspected.prerequisites);
-  if (!commands.length) {
-    vscode.window.showInformationMessage('CAssets: no safe recommended repository command was inferred.');
+  const { stack } = await inspectFolder(folder);
+  if (!stack.node || !stack.package) {
+    vscode.window.showInformationMessage('CAssets: native Run Recommended currently supports npm package scripts only. No command was executed.');
     return;
   }
-
-  const preferDev = cassetsConfig().get('recommendedTask.preferDev', true);
-  const recommended =
-    (preferDev ? commands.find(x => x.kind === 'dev') : null) ||
-    commands.find(x => x.kind === 'test') ||
-    commands.find(x => x.kind === 'build') ||
-    commands[0];
-
-  const approved = await vscode.window.showInformationMessage(
-    `Run "${recommended.command}" in the integrated terminal?`,
-    'Run',
-    'Cancel'
-  );
-
-  if (approved === 'Run') {
-    const terminal = vscode.window.createTerminal({ name: 'CAssets Recommended', cwd: folder.uri.fsPath });
-    terminal.show();
-    terminal.sendText(recommended.command, true);
+  const manager = stack.package.packageManager || stack.packageManager || 'npm';
+  if (!/^npm(?:@|$)/.test(manager)) {
+    vscode.window.showInformationMessage('CAssets: native Run Recommended currently supports npm workspaces only. No command was executed.');
+    return;
   }
+  await runWorkspaceScript(folder, stack.package, {
+    recommended: true,
+    preferDev: cassetsConfig().get('recommendedTask.preferDev', true),
+    maxPackages: cassetsConfig().get('workspaceGraph.maxPackages', 200)
+  });
 }
 
 async function showStack() {
