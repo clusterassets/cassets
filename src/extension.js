@@ -12,6 +12,7 @@ const { evaluate } = require('./modules/health');
 const prerequisites = require('./modules/prerequisites');
 const workspaceGraphModule = require('./modules/workspace-graph');
 const onboarding = require('./modules/onboarding');
+const { runWorkspaceScript } = require('./modules/workspace-script-runner');
 const workstation = require('./modules/workstation');
 
 function cassetsConfig() { return vscode.workspace.getConfiguration('cassets'); }
@@ -820,6 +821,16 @@ async function activate(context) {
     vscode.commands.registerCommand('cassets.checkPrerequisites', checkPrerequisites),
     vscode.commands.registerCommand('cassets.showWorkspaceGraph', showWorkspaceGraph),
     vscode.commands.registerCommand('cassets.runRecommended', runRecommended),
+    vscode.commands.registerCommand('cassets.runWorkspaceScript', async () => {
+      const folders = vscode.workspace.workspaceFolders || [];
+      const folder = folders.length === 1 ? folders[0] : await vscode.window.showQuickPick(
+        folders.map(item => ({ label: item.name, description: item.uri.fsPath, folder: item })),
+        { title: 'CAssets: Select workspace folder' }
+      ).then(choice => choice?.folder);
+      if (!folder) return;
+      const { stack } = await inspectFolder(folder);
+      await runWorkspaceScript(folder, stack.package, { maxPackages: cassetsConfig().get('workspaceGraph.maxPackages', 200) });
+    }),
     vscode.commands.registerCommand('cassets.showOnboarding', showOnboarding),
     vscode.workspace.onDidChangeWorkspaceFolders(() => bootstrapAll()),
     vscode.workspace.onDidGrantWorkspaceTrust(() => bootstrapAll())
