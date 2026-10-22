@@ -29,3 +29,11 @@ test('sensitive scripts are discovered but not executed', () => {
   assert.equal(commands[0].risk, 'sensitive');
   assert.equal(commands[0].command, 'npm -w @familyos/api run db:migrate');
 });
+
+test('migration and destructive script names require review', () => {
+  const names = ['db:migrate', 'db:migration', 'db:seed', 'db:reset', 'deploy:prod', 'clean', 'install'];
+  const scripts = Object.fromEntries(names.map(name => [name, 'echo placeholder']));
+  const commands = inventory([{ path: '.', name: 'root', scripts }]);
+  assert.deepEqual(commands.map(x => x.risk), names.map(() => 'sensitive'));
+  assert.equal(inventory([{ path: '.', scripts: { dev: 'vite' } }])[0].risk, 'review');
+});
