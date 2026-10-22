@@ -12,12 +12,24 @@ function pickable(commands) {
   }));
 }
 
+function recommendedCandidates(commands, preferDev = true) {
+  const preferred = preferDev ? ['dev', 'start', 'test', 'build', 'lint'] : ['test', 'build', 'lint', 'dev', 'start'];
+  return commands.filter(command => preferred.includes(command.name) && command.risk !== 'sensitive')
+    .sort((a, b) => preferred.indexOf(a.name) - preferred.indexOf(b.name) ||
+      Number(a.root) - Number(b.root) || a.packageName.localeCompare(b.packageName));
+}
+
 async function runWorkspaceScript(folder, rootPackage, options = {}) {
   if (!vscode.workspace.isTrusted) {
     vscode.window.showWarningMessage('CAssets: running workspace scripts requires Workspace Trust.');
     return false;
   }
   if (!folder || !rootPackage) return false;
+  const declaredManager = rootPackage.packageManager;
+  if (declaredManager && !/^npm(?:@|$)/.test(declaredManager)) {
+    vscode.window.showWarningMessage('CAssets: native workspace execution supports npm only. No command was executed.');
+    return false;
+  }
   const graph = await collectNodePackages(folder, rootPackage, options.maxPackages || 200);
   if (graph.truncated) {
     vscode.window.showWarningMessage('CAssets: workspace discovery was truncated; review the command list before running.');
@@ -27,8 +39,13 @@ async function runWorkspaceScript(folder, rootPackage, options = {}) {
     vscode.window.showInformationMessage('CAssets: no npm scripts were discovered in this workspace.');
     return false;
   }
-  const chosen = await vscode.window.showQuickPick(pickable(commands), {
-    title: 'CAssets: Select a workspace script',
+  const candidates = options.recommended ? recommendedCandidates(commands, options.preferDev !== false) : commands;
+  if (!candidates.length) {
+    vscode.window.showInformationMessage('CAssets: no recommended runnable scripts were discovered. Use Run Workspace Script to inspect all scripts.');
+    return false;
+  }
+  const chosen = await vscode.window.showQuickPick(pickable(candidates), {
+    title: options.recommended ? 'CAssets: Select recommended workspace script' : 'CAssets: Select a workspace script',
     placeHolder: 'Choose the exact root or package script to run',
     matchOnDescription: true,
     matchOnDetail: true
@@ -54,4 +71,4 @@ async function runWorkspaceScript(folder, rootPackage, options = {}) {
   await vscode.tasks.executeTask(task);
   return true;
 }
-module.exports = { runWorkspaceScript, pickable };
+module.exports = { runWorkspaceScript, pickable, recommendedCandidates };
