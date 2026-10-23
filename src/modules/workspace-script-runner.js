@@ -68,7 +68,8 @@ async function runWorkspaceScript(folder, rootPackage, options = {}) {
     new vscode.ProcessExecution('npm', selected.args, { cwd: folder.uri.fsPath })
   );
   task.presentationOptions = { reveal: vscode.TaskRevealKind.Always, panel: vscode.TaskPanelKind.Dedicated };
-  await vscode.tasks.executeTask(task);
+  const execution = await vscode.tasks.executeTask(task);
+  options.lifecycle?.track(execution);
   return true;
 }
 module.exports = { runWorkspaceScript, pickable, recommendedCandidates };
