@@ -1,15 +1,20 @@
 'use strict';
 const vscode = require('vscode');
 const { discover } = require('./architecture-core');
+const { analyzerFor, manifests, classify } = require('./architecture-analyzers');
 
 async function scanWorkspace(folder, options = {}) {
   const maxFiles = Math.min(Math.max(options.maxFiles || 300, 1), 1000);
   const maxBytes = Math.min(Math.max(options.maxBytes || 256 * 1024, 1024), 1024 * 1024);
   const files = {};
   const ignored = '**/{node_modules,.git,dist,build,coverage,.next,.turbo,vendor}/**';
-  const uris = await vscode.workspace.findFiles(new vscode.RelativePattern(folder, '**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}'), ignored, maxFiles + 1);
+  const uris = await vscode.workspace.findFiles(new vscode.RelativePattern(folder, '**/*'), ignored, Math.min(maxFiles * 8, 8000));
+  const candidates = uris.filter(uri => {
+    const file = uri.path.split('/').pop();
+    return analyzerFor(file) || manifests.includes(file) || /\.(?:yaml|yml)$/.test(file);
+  });
   let skipped = 0;
-  for (const uri of uris.slice(0, maxFiles)) {
+  for (const uri of candidates.slice(0, maxFiles)) {
     const rootPath = folder.uri.path.replace(/\/$/, '');
     if (!uri.path.startsWith(rootPath + '/')) { skipped++; continue; }
     const file = uri.path.slice(rootPath.length + 1);
@@ -22,7 +27,7 @@ async function scanWorkspace(folder, options = {}) {
   }
   const result = discover(files, { maxEdges: options.maxEdges || 4000 });
   return { ...result, scannedFiles: Object.keys(files).length, skippedFiles: skipped,
-    truncated: result.truncated || uris.length > maxFiles, folder: folder.name };
+    truncated: result.truncated || candidates.length > maxFiles || uris.length >= Math.min(maxFiles * 8, 8000), folder: folder.name };
 }
 
 function mermaid(result) {
@@ -43,7 +48,7 @@ async function showArchitectureExplorer(folder, options = {}) {
   const result = await scanWorkspace(folder, options);
   const document = await vscode.workspace.openTextDocument({ language: 'mermaid', content: mermaid(result) });
   await vscode.window.showTextDocument(document, { preview: false });
-  vscode.window.showInformationMessage('CAssets: discovered ' + result.nodes.length + ' source files and ' +
+  vscode.window.showInformationMessage('CAssets: discovered ' + result.nodes.length + ' analyzed/config files and ' +
     result.edges.length + ' static dependencies' + (result.truncated ? ' (scan truncated)' : '') +
     '. Diagram is a text preview; unresolved edges: ' + result.unresolved.length + '.');
   return result;
