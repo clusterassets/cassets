@@ -100,6 +100,10 @@
   "contributes": {
     "commands": [
       {
+        "command": "cassets.showTaskHistory",
+        "title": "CAssets: Show Task History"
+      },
+      {
         "command": "cassets.runWorkspaceScript",
         "title": "CAssets: Run Workspace Script"
       },

@@ -13,12 +13,14 @@ const prerequisites = require('./modules/prerequisites');
 const workspaceGraphModule = require('./modules/workspace-graph');
 const onboarding = require('./modules/onboarding');
 const { runWorkspaceScript } = require('./modules/workspace-script-runner');
+const { createTaskLifecycle } = require('./modules/task-lifecycle');
 const workstation = require('./modules/workstation');
 
 function cassetsConfig() { return vscode.workspace.getConfiguration('cassets'); }
 
 let healthStatusItem;
 let consentPromptActive = false;
+let taskLifecycle;
 
 function intelligenceOptions() {
   const c = cassetsConfig();
@@ -543,7 +545,8 @@ async function runRecommended() {
   await runWorkspaceScript(folder, stack.package, {
     recommended: true,
     preferDev: cassetsConfig().get('recommendedTask.preferDev', true),
-    maxPackages: cassetsConfig().get('workspaceGraph.maxPackages', 200)
+    maxPackages: cassetsConfig().get('workspaceGraph.maxPackages', 200),
+    lifecycle: taskLifecycle
   });
 }
 
@@ -788,6 +791,7 @@ async function runWorkspaceDoctor() {
 }
 
 async function activate(context) {
+  taskLifecycle = createTaskLifecycle(context);
   healthStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 20);
   context.subscriptions.push(healthStatusItem);
 
@@ -813,6 +817,14 @@ async function activate(context) {
     vscode.commands.registerCommand('cassets.checkPrerequisites', checkPrerequisites),
     vscode.commands.registerCommand('cassets.showWorkspaceGraph', showWorkspaceGraph),
     vscode.commands.registerCommand('cassets.runRecommended', runRecommended),
+    vscode.commands.registerCommand('cassets.showTaskHistory', async () => {
+      const entries = taskLifecycle.snapshot();
+      if (!entries.length) { vscode.window.showInformationMessage('CAssets: no tasks launched in this extension session.'); return; }
+      await vscode.window.showQuickPick(entries.map(x => ({
+        label: x.name, description: x.status + (x.exitCode === null ? '' : ' (exit ' + x.exitCode + ')'),
+        detail: x.folder + ' · ' + new Date(x.startedAt).toLocaleString()
+      })), { title: 'CAssets: Native Task History' });
+    }),
     vscode.commands.registerCommand('cassets.runWorkspaceScript', async () => {
       const folders = vscode.workspace.workspaceFolders || [];
       const folder = folders.length === 1 ? folders[0] : await vscode.window.showQuickPick(
@@ -821,7 +833,7 @@ async function activate(context) {
       ).then(choice => choice?.folder);
       if (!folder) return;
       const { stack } = await inspectFolder(folder);
-      await runWorkspaceScript(folder, stack.package, { maxPackages: cassetsConfig().get('workspaceGraph.maxPackages', 200) });
+      await runWorkspaceScript(folder, stack.package, { maxPackages: cassetsConfig().get('workspaceGraph.maxPackages', 200), lifecycle: taskLifecycle });
     }),
     vscode.commands.registerCommand('cassets.showOnboarding', showOnboarding),
     vscode.workspace.onDidChangeWorkspaceFolders(() => bootstrapAll()),
