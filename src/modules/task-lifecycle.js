@@ -1,6 +1,8 @@
 'use strict';
 const vscode = require('vscode');
 
+let activeLifecycle = null;
+function getActiveTaskLifecycle() { return activeLifecycle; }
 function createTaskLifecycle(context, options = {}) {
   const records = new Map();
   const executionIds = new WeakMap();
@@ -54,6 +56,8 @@ function createTaskLifecycle(context, options = {}) {
     }
     changed.fire();
   }
-  return { track, snapshot, onDidChange: changed.event };
+  activeLifecycle = { track, snapshot, onDidChange: changed.event };
+  context.subscriptions.push({ dispose() { if (activeLifecycle?.snapshot === snapshot) activeLifecycle = null; } });
+  return activeLifecycle;
 }
-module.exports = { createTaskLifecycle };
+module.exports = { createTaskLifecycle, getActiveTaskLifecycle };
