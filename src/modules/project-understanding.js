@@ -6,6 +6,7 @@ const verification = require('./doctor-verification');
 const prerequisites = require('./prerequisites');
 const { inventory } = require('./command-inventory');
 const { taskView } = require('./project-task-view');
+const { getActiveTaskLifecycle } = require('./task-lifecycle');
 
 const ACTIONS = Object.freeze({
   refresh: null,
@@ -129,6 +130,7 @@ ${doctorSection(report)}
 }
 
 async function openProjectUnderstanding(inspectFolder, inspectDoctor, inspectGraph = inspectDoctor, lifecycle = null) {
+  lifecycle = lifecycle || getActiveTaskLifecycle();
   const folders = vscode.workspace.workspaceFolders || [];
   let folder = folders[0];
   if (!folder) { vscode.window.showInformationMessage('CAssets: open a workspace to understand its project.'); return; }
