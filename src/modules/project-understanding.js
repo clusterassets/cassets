@@ -5,6 +5,8 @@ const doctor = require('./workspace-doctor');
 const verification = require('./doctor-verification');
 const prerequisites = require('./prerequisites');
 const { inventory } = require('./command-inventory');
+const { taskView } = require('./project-task-view');
+const { getActiveTaskLifecycle } = require('./task-lifecycle');
 
 const ACTIONS = Object.freeze({
   refresh: null,
@@ -19,6 +21,7 @@ const ACTIONS = Object.freeze({
   guide: 'cassets.showOnboarding',
   graph: 'cassets.showWorkspaceGraph',
   intelligence: 'cassets.showIntelligence',
+  tasks: 'cassets.showTaskHistory',
   setup: 'cassets.bootstrapWorkspace'
 });
 
@@ -76,7 +79,7 @@ function doctorSection(report) {
     '</section>';
 }
 
-function render(model, nonce, report = null, folders = [], commands = []) {
+function render(model, nonce, report = null, folders = [], commands = [], taskState = { counts: {}, tasks: [] }) {
   const tags = items => items.length ? items.map(x => '<span class="tag">' + escapeHtml(x) + '</span>').join('') : '<span class="muted">Not detected</span>';
   const rows = model.scripts.length ? model.scripts.map(x =>
     '<tr><th scope="row">' + escapeHtml(x.name) + '</th><td><code>' + escapeHtml(x.command) + '</code></td></tr>'
@@ -87,9 +90,11 @@ function render(model, nonce, report = null, folders = [], commands = []) {
   const runtime = model.runtime.length ? model.runtime.map(x =>
     '<li><strong>' + escapeHtml(x.name) + '</strong> ' + escapeHtml(x.value) + '</li>'
   ).join('') : '<li>Runtime versions not declared</li>';
+  const taskRows = taskState.tasks.map(task => '<tr><th scope="row">' + escapeHtml(task.name) + '</th><td>' + escapeHtml(task.status) + '</td><td>' + (task.exitCode === null ? '—' : task.exitCode) + '</td><td>' + (task.startedAt ? escapeHtml(new Date(task.startedAt).toLocaleString()) : '—') + '</td></tr>').join('');
+  const taskCounts = taskState.counts || {};
   const buttons = [
     ['health', 'Project health'], ['runWorkspace', 'Run workspace script'], ['run', 'Run recommended'],
-    ['guide', 'Onboarding'], ['graph', 'Workspace graph'], ['intelligence', 'More intelligence']
+    ['tasks', 'Task history'], ['guide', 'Onboarding'], ['graph', 'Workspace graph'], ['intelligence', 'More intelligence']
   ].map(([id, label]) => '<button type="button" data-action="' + id + '">' + label + '</button>').join('');
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -115,6 +120,7 @@ td{overflow-wrap:anywhere}code{font-family:var(--vscode-editor-font-family)}.act
 <section><h2>Runtime requirements</h2><ul>${runtime}</ul><p>Workspace: ${model.monorepo ? 'Monorepo detected' : 'Single workspace or undetermined'}</p></section>
 <section><h2>Code quality</h2><p>Formatter: <strong>${escapeHtml(model.formatter)}</strong></p><p>Linter: <strong>${escapeHtml(model.linter)}</strong></p><p>Tests: ${tags(model.tests)}</p></section>
 </div>
+<section id="tasks"><h2>Native task lifecycle</h2><p class="muted">Session-only, workspace-scoped. Task completion does not verify service health.</p><p>Scheduled: ${taskCounts.scheduled || 0} · Running: ${taskCounts.running || 0} · Completed: ${taskCounts.completed || 0} · Failed: ${taskCounts.failed || 0} · Unknown: ${taskCounts.unknown || 0}</p><table><thead><tr><th>Task</th><th>Status</th><th>Exit</th><th>Started</th></tr></thead><tbody>${taskRows || '<tr><td colspan="4">No CAssets tasks recorded for this workspace session.</td></tr>'}</tbody></table><button data-action="tasks">Show task history</button></section>
 ${doctorSection(report)}
 <section><h2>Discovered workspace commands</h2><p class="muted">Root and package commands are shown independently. Discovery never runs commands.</p><table><thead><tr><th>Origin</th><th>Script</th><th>Command</th><th>Classification</th></tr></thead><tbody>${commandRows || '<tr><td colspan="4">No workspace commands discovered</td></tr>'}</tbody></table></section>
 <section><h2>Available repository scripts</h2><table><thead><tr><th>Script</th><th>Command</th></tr></thead><tbody>${rows}</tbody></table><p class="muted">Commands are shown for inspection, not executed automatically.</p></section>
@@ -123,7 +129,8 @@ ${doctorSection(report)}
 </body></html>`;
 }
 
-async function openProjectUnderstanding(inspectFolder, inspectDoctor, inspectGraph = inspectDoctor) {
+async function openProjectUnderstanding(inspectFolder, inspectDoctor, inspectGraph = inspectDoctor, lifecycle = null) {
+  lifecycle = lifecycle || getActiveTaskLifecycle();
   const folders = vscode.workspace.workspaceFolders || [];
   let folder = folders[0];
   if (!folder) { vscode.window.showInformationMessage('CAssets: open a workspace to understand its project.'); return; }
@@ -134,13 +141,22 @@ async function openProjectUnderstanding(inspectFolder, inspectDoctor, inspectGra
   let currentModel = null;
   let previousIds = new Set();
   let checking = false;
+  let cachedCommands = [];
+  let disposed = false;
+  const renderCurrent = () => {
+    if (!disposed && currentModel) panel.webview.html = render(currentModel, nonce, report, folders, cachedCommands,
+      taskView(lifecycle?.snapshot() || [], folder.name));
+  };
+  const lifecycleListener = lifecycle?.onDidChange(() => renderCurrent());
+  panel.onDidDispose(() => { disposed = true; lifecycleListener?.dispose(); });
   const refresh = async () => {
     try {
       const { stack, intelligence } = await inspectFolder(folder);
       currentModel = viewModel(folder, stack, intelligence);
       const graphResult = await inspectGraph(folder);
       const commands = inventory(graphResult.workspaceGraph?.packages || [{ path: '.', name: stack.package?.name || '(root)', scripts: stack.scripts || {} }]);
-      panel.webview.html = render(currentModel, nonce, report, folders, commands);
+      cachedCommands = commands;
+      renderCurrent();
     } catch (error) {
       vscode.window.showErrorMessage('CAssets: project inspection failed: ' + error.message);
     }

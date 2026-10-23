@@ -10,6 +10,8 @@ vm.runInNewContext(source, {
   module: shim,
   require: name => {
     if (name === 'vscode') return { workspace: {}, window: {} };
+    if (name === './project-task-view') return require('../../src/modules/project-task-view');
+    if (name === './task-lifecycle') return { getActiveTaskLifecycle: () => null };
     if (name === './command-inventory') return { inventory: () => [] };
     if (name === './doctor-verification') return { scopeFor: () => null };
     if (name === './prerequisites') return { checkCommand() {} };
