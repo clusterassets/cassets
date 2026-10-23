@@ -10,9 +10,9 @@ async function scanWorkspace(folder, options = {}) {
   const uris = await vscode.workspace.findFiles(new vscode.RelativePattern(folder, '**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}'), ignored, maxFiles + 1);
   let skipped = 0;
   for (const uri of uris.slice(0, maxFiles)) {
-    const relative = vscode.workspace.asRelativePath(uri, false).replace(/\\/g, '/');
-    const prefix = folder.name + '/';
-    const file = relative.startsWith(prefix) ? relative.slice(prefix.length) : relative;
+    const rootPath = folder.uri.path.replace(/\/$/, '');
+    if (!uri.path.startsWith(rootPath + '/')) { skipped++; continue; }
+    const file = uri.path.slice(rootPath.length + 1);
     if (file.startsWith('../') || file.startsWith('/') || file.includes('/../')) { skipped++; continue; }
     try {
       const stat = await vscode.workspace.fs.stat(uri);
