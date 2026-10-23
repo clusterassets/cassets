@@ -14,6 +14,7 @@ const workspaceGraphModule = require('./modules/workspace-graph');
 const onboarding = require('./modules/onboarding');
 const { runWorkspaceScript } = require('./modules/workspace-script-runner');
 const { createTaskLifecycle } = require('./modules/task-lifecycle');
+const { showArchitectureExplorer } = require('./modules/architecture-explorer');
 const workstation = require('./modules/workstation');
 
 function cassetsConfig() { return vscode.workspace.getConfiguration('cassets'); }
@@ -817,6 +818,14 @@ async function activate(context) {
     vscode.commands.registerCommand('cassets.checkPrerequisites', checkPrerequisites),
     vscode.commands.registerCommand('cassets.showWorkspaceGraph', showWorkspaceGraph),
     vscode.commands.registerCommand('cassets.runRecommended', runRecommended),
+    vscode.commands.registerCommand('cassets.architectureExplorer', async () => {
+      const folders = vscode.workspace.workspaceFolders || [];
+      const folder = folders.length === 1 ? folders[0] : await vscode.window.showQuickPick(
+        folders.map(item => ({ label: item.name, description: item.uri.fsPath, folder: item })),
+        { title: 'CAssets: Select architecture workspace' }
+      ).then(choice => choice?.folder);
+      if (folder) await showArchitectureExplorer(folder);
+    }),
     vscode.commands.registerCommand('cassets.showTaskHistory', async () => {
       const entries = taskLifecycle.snapshot();
       if (!entries.length) { vscode.window.showInformationMessage('CAssets: no tasks launched in this extension session.'); return; }
