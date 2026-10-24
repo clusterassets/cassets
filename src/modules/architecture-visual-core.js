@@ -11,11 +11,12 @@ function layout(graph, selected, direction = 'both', depth = 1, type = 'all', ki
   const distance = new Map([[selected, 0]]);
   let frontier = [selected];
   for (let level = 1; level <= 4 && frontier.length; level++) {
+    const current = new Set(frontier);
     const next = [];
     for (const edge of filtered) {
       const candidates = [];
-      if ((direction === 'both' || direction === 'outgoing') && frontier.includes(edge.from)) candidates.push(edge.to);
-      if ((direction === 'both' || direction === 'incoming') && frontier.includes(edge.to)) candidates.push(edge.from);
+      if ((direction === 'both' || direction === 'outgoing') && current.has(edge.from)) candidates.push(edge.to);
+      if ((direction === 'both' || direction === 'incoming') && current.has(edge.to)) candidates.push(edge.from);
       for (const id of candidates) if (!distance.has(id)) { distance.set(id, level); next.push(id); }
     }
     frontier = next;
