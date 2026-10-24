@@ -119,7 +119,6 @@ async function showArchitectureExplorer(folder, options = {}) {
   const nonce = crypto.randomBytes(16).toString('hex');
   let selected = result.nodes[0]?.id || '';
   let direction = 'both', depth = 1, type = 'all', kind = 'all';
-  let revision = 0;
   const render = () => { panel.webview.html = view(result, selected, direction, depth, nonce, type, kind); };
   panel.webview.onDidReceiveMessage(async message => {
     if (!vscode.workspace.workspaceFolders?.some(f => f.uri.toString() === result.folderUri)) return;
@@ -133,7 +132,6 @@ async function showArchitectureExplorer(folder, options = {}) {
       const kinds = new Set(result.edges.map(e => e.kind));
       type = types.has(message.type) ? message.type : 'all';
       kind = kinds.has(message.kind) ? message.kind : 'all';
-      revision++;
       render();
     } else if (message.action === 'edge') {
       const edges = layout(result, selected, direction, depth, type, kind).edges;
