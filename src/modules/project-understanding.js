@@ -5,6 +5,7 @@ const doctor = require('./workspace-doctor');
 const verification = require('./doctor-verification');
 const prerequisites = require('./prerequisites');
 const { inventory } = require('./command-inventory');
+const { declaredServices, dependencies, checkServices } = require('./service-readiness');
 const { taskView } = require('./project-task-view');
 const { getActiveTaskLifecycle } = require('./task-lifecycle');
 const { createDebugTracker, getActiveDebugTracker, startNativeDebugging, availableConfigurations, debugView } = require('./native-debugging');
@@ -24,6 +25,7 @@ const ACTIONS = Object.freeze({
   intelligence: 'cassets.showIntelligence',
   tasks: 'cassets.showTaskHistory',
   debug: null,
+  services: null,
   setup: 'cassets.bootstrapWorkspace'
 });
 
@@ -81,7 +83,7 @@ function doctorSection(report) {
     '</section>';
 }
 
-function render(model, nonce, report = null, folders = [], commands = [], taskState = { counts: {}, tasks: [] }, debugState = { active: 0, sessions: [] }, debugConfigs = []) {
+function render(model, nonce, report = null, folders = [], commands = [], taskState = { counts: {}, tasks: [] }, debugState = { active: 0, sessions: [] }, debugConfigs = [], serviceState = { services: [], results: [], graph: { missing: [], cyclic: false } }) {
   const tags = items => items.length ? items.map(x => '<span class="tag">' + escapeHtml(x) + '</span>').join('') : '<span class="muted">Not detected</span>';
   const rows = model.scripts.length ? model.scripts.map(x =>
     '<tr><th scope="row">' + escapeHtml(x.name) + '</th><td><code>' + escapeHtml(x.command) + '</code></td></tr>'
@@ -96,6 +98,7 @@ function render(model, nonce, report = null, folders = [], commands = [], taskSt
   const taskCounts = taskState.counts || {};
   const debugRows = debugState.sessions.map(x => '<tr><th scope="row">' + escapeHtml(x.name) + '</th><td>' + escapeHtml(x.type) + '</td><td>' + escapeHtml(x.status) + '</td></tr>').join('');
   const debugOptions = debugConfigs.map(x => '<li>' + escapeHtml(x.name) + ' (' + escapeHtml(x.type) + ' · ' + escapeHtml(x.request) + ')</li>').join('');
+  const serviceRows = serviceState.services.map(x => { const probe = serviceState.results.find(p => p.name === x.name); return '<tr><th scope="row">' + escapeHtml(x.name) + '</th><td>' + escapeHtml(x.host + ':' + x.port) + '</td><td>' + escapeHtml(x.dependsOn.join(', ') || '—') + '</td><td>' + escapeHtml(probe?.status || 'Not checked') + '</td></tr>'; }).join('');
   const buttons = [
     ['health', 'Project health'], ['runWorkspace', 'Run workspace script'], ['run', 'Run recommended'],
     ['tasks', 'Task history'], ['guide', 'Onboarding'], ['graph', 'Workspace graph'], ['intelligence', 'More intelligence']
@@ -126,6 +129,7 @@ td{overflow-wrap:anywhere}code{font-family:var(--vscode-editor-font-family)}.act
 </div>
 <section id="tasks"><h2>Native task lifecycle</h2><p class="muted">Session-only, workspace-scoped. Task completion does not verify service health.</p><p>Scheduled: ${taskCounts.scheduled || 0} · Running: ${taskCounts.running || 0} · Completed: ${taskCounts.completed || 0} · Failed: ${taskCounts.failed || 0} · Unknown: ${taskCounts.unknown || 0}</p><table><thead><tr><th>Task</th><th>Status</th><th>Exit</th><th>Started</th></tr></thead><tbody>${taskRows || '<tr><td colspan="4">No CAssets tasks recorded for this workspace session.</td></tr>'}</tbody></table><button data-action="tasks">Show task history</button></section>
 <section id="debug"><h2>Native debugging</h2><p class="muted">Uses existing VS Code launch configurations. Debug sessions are observed only while this Project Overview is open.</p><p>Active sessions: ${debugState.active}</p><p>Available configurations:</p><ul>${debugOptions || '<li>No supported launch configurations detected.</li>'}</ul><button data-action="debug">Start native debugging…</button><table><thead><tr><th>Session</th><th>Debugger</th><th>Status</th></tr></thead><tbody>${debugRows || '<tr><td colspan="3">No observed debug sessions.</td></tr>'}</tbody></table></section>
+<section id="services"><h2>Declared service readiness</h2><p class="muted">Opt-in loopback TCP checks, or HTTP GET health checks when healthPath is declared. TCP reachable does not mean application healthy; HTTP 2xx does not verify downstream dependencies. Define services in package.json under cassets.services; no automatic discovery or startup.</p><p>Missing declared dependencies: ${serviceState.graph.missing.length} · Dependency cycle detected: ${serviceState.graph.cyclic ? 'Yes' : 'No'}</p><table><thead><tr><th>Service</th><th>Local endpoint</th><th>Depends on</th><th>Check result</th></tr></thead><tbody>${serviceRows || '<tr><td colspan="4">No explicitly declared local services.</td></tr>'}</tbody></table><button data-action="services">Check local service health…</button></section>
 ${doctorSection(report)}
 <section><h2>Discovered workspace commands</h2><p class="muted">Root and package commands are shown independently. Discovery never runs commands.</p><table><thead><tr><th>Origin</th><th>Script</th><th>Command</th><th>Classification</th></tr></thead><tbody>${commandRows || '<tr><td colspan="4">No workspace commands discovered</td></tr>'}</tbody></table></section>
 <section><h2>Available repository scripts</h2><table><thead><tr><th>Script</th><th>Command</th></tr></thead><tbody>${rows}</tbody></table><p class="muted">Commands are shown for inspection, not executed automatically.</p></section>
@@ -145,6 +149,8 @@ async function openProjectUnderstanding(inspectFolder, inspectDoctor, inspectGra
   const debugContext = { subscriptions: [] };
   const debugTracker = createDebugTracker(debugContext);
   let debugConfigs = [];
+  let serviceState = { services: [], results: [], graph: { missing: [], cyclic: false } };
+  let checkingServices = false;
   let report = null;
   let currentModel = null;
   let previousIds = new Set();
@@ -153,7 +159,7 @@ async function openProjectUnderstanding(inspectFolder, inspectDoctor, inspectGra
   let disposed = false;
   const renderCurrent = () => {
     if (!disposed && currentModel) panel.webview.html = render(currentModel, nonce, report, folders, cachedCommands,
-      taskView(lifecycle?.snapshot() || [], folder.name), debugView(debugTracker.snapshot(), folder.name), debugConfigs);
+      taskView(lifecycle?.snapshot() || [], folder.name), debugView(debugTracker.snapshot(), folder.name), debugConfigs, serviceState);
   };
   const lifecycleListener = lifecycle?.onDidChange(() => renderCurrent());
   const debugListener = debugTracker.onDidChange(() => renderCurrent());
@@ -166,6 +172,8 @@ async function openProjectUnderstanding(inspectFolder, inspectDoctor, inspectGra
       const graphResult = await inspectGraph(folder);
       const commands = inventory(graphResult.workspaceGraph?.packages || [{ path: '.', name: stack.package?.name || '(root)', scripts: stack.scripts || {} }]);
       cachedCommands = commands;
+      const services = declaredServices(stack.package);
+      serviceState = { services, results: [], graph: dependencies(services) };
       debugConfigs = availableConfigurations(vscode.workspace.getConfiguration('launch', folder.uri).get('configurations', []));
       renderCurrent();
     } catch (error) {
@@ -177,6 +185,20 @@ async function openProjectUnderstanding(inspectFolder, inspectDoctor, inspectGra
         !Object.prototype.hasOwnProperty.call(ACTIONS, message.action)) return;
     if (message.action === 'refresh') { await refresh(); return; }
     if (message.action === 'debug') { await startNativeDebugging(folder); return; }
+    if (message.action === 'services') {
+      if (checkingServices || !vscode.workspace.isTrusted || !serviceState.services.length) return;
+      checkingServices = true;
+      const checkedFolder = folder;
+      const selected = serviceState.services;
+      try {
+        const results = await checkServices(selected);
+        if (!disposed && folder === checkedFolder && serviceState.services === selected) {
+          serviceState = { ...serviceState, results };
+          renderCurrent();
+        }
+      } finally { checkingServices = false; }
+      return;
+    }
     if (message.action === 'folder') {
       if (checking) return;
       if (!Number.isInteger(message.index) || message.index < 0 || message.index >= folders.length) return;
