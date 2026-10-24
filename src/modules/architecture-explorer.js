@@ -19,6 +19,7 @@ async function scanWorkspace(folder, options = {}) {
     return analyzerFor(file) || manifests.includes(file) || /\.(?:yaml|yml)$/.test(file);
   });
   let skipped = 0;
+  const rootPath = folder.uri.path.replace(/\\/$/, '');
   for (const uri of candidates.slice(0, maxFiles)) {
     const rootPath = folder.uri.path.replace(/\/$/, '');
     if (!uri.path.startsWith(rootPath + '/')) { skipped++; continue; }
@@ -60,7 +61,7 @@ function view(graph, selected, direction, depth, nonce, type = 'all', kind = 'al
   const kinds = [...new Set(graph.edges.map(e => e.kind))].sort();
   const selectable = graph.nodes.slice(0, 299);
   if (selected && !selectable.some(n => n.id === selected)) selectable.unshift(graph.nodes.find(n => n.id === selected));
-  const items = selectable.map(n =>
+  const items = selectable.filter(Boolean).map(n =>
     '<option value="' + escapeHtml(n.id) + '"' + (n.id === selected ? ' selected' : '') + '>' + escapeHtml(n.id) + '</option>').join('');
   const lines = slice.edges.slice(0, 300).filter(e => e.evidence && typeof e.evidence.file === 'string').map(e =>
     '<tr><td><button data-select="' + escapeHtml(e.from) + '">' + escapeHtml(e.from) + '</button></td><td>' +
