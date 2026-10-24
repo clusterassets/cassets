@@ -1,7 +1,7 @@
 {
   "name": "cassets",
   "displayName": "CAssets CodeSight — DevReady",
-  "description": "Native-first VS Code workstation and repository readiness engine. CAssets DevReady applies a safe professional baseline, minimizes extension dependency, detects project requirements, and guides contributors to the first successful build.",
+  "description": "CAssets CodeSight: understand code architecture, verify dependencies and prepare your VS Code workspace for development.",
   "version": "0.7.0",
   "publisher": "clusterassets",
   "license": "MIT",
@@ -84,7 +84,7 @@
     "test:unit": "node --test test/unit/*.test.js",
     "test:integration": "vscode-test",
     "test": "npm run test:unit && npm run test:integration",
-    "vscode:prepublish": "npm run validate && npm run test:unit",
+    "vscode:prepublish": "node scripts/generate-codesight-icon.cjs && npm run validate && npm run test:unit",
     "package:pre": "vsce package --pre-release",
     "publish:pre": "vsce publish --pre-release",
     "ci": "npm run validate && npm run test:unit",
