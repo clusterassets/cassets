@@ -3,12 +3,14 @@ const vscode = require('vscode');
 const { discover } = require('./architecture-core');
 const { neighborhood, detail } = require('./architecture-view-core');
 const { layout } = require('./architecture-visual-core');
+const { safeRelative, knownSource, boundedLine } = require('./architecture-navigation');
 const crypto = require('node:crypto');
 const { analyzerFor, manifests, classify } = require('./architecture-analyzers');
 
 async function scanWorkspace(folder, options = {}) {
   const maxFiles = Math.min(Math.max(options.maxFiles || 300, 1), 1000);
   const maxBytes = Math.min(Math.max(options.maxBytes || 256 * 1024, 1024), 1024 * 1024);
+  if (!vscode.workspace.isTrusted) throw new Error('CAssets: Architecture scan requires Workspace Trust.');
   const files = {};
   const ignored = '**/{node_modules,.git,dist,build,coverage,.next,.turbo,vendor}/**';
   const uris = await vscode.workspace.findFiles(new vscode.RelativePattern(folder, '**/*'), ignored, Math.min(maxFiles * 8, 8000));
@@ -21,7 +23,7 @@ async function scanWorkspace(folder, options = {}) {
     const rootPath = folder.uri.path.replace(/\/$/, '');
     if (!uri.path.startsWith(rootPath + '/')) { skipped++; continue; }
     const file = uri.path.slice(rootPath.length + 1);
-    if (file.startsWith('../') || file.startsWith('/') || file.includes('/../')) { skipped++; continue; }
+    if (!safeRelative(file)) { skipped++; continue; }
     try {
       const stat = await vscode.workspace.fs.stat(uri);
       if (stat.size > maxBytes) { skipped++; continue; }
@@ -30,7 +32,7 @@ async function scanWorkspace(folder, options = {}) {
   }
   const result = discover(files, { maxEdges: options.maxEdges || 4000 });
   return { ...result, scannedFiles: Object.keys(files).length, skippedFiles: skipped,
-    truncated: result.truncated || candidates.length > maxFiles || uris.length >= Math.min(maxFiles * 8, 8000), folder: folder.name };
+    truncated: result.truncated || candidates.length > maxFiles || uris.length >= Math.min(maxFiles * 8, 8000), folder: folder.name, folderUri: folder.uri.toString() };
 }
 
 function mermaid(result) {
@@ -102,12 +104,13 @@ function view(graph, selected, direction, depth, nonce, type = 'all', kind = 'al
 <defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="none" stroke="currentColor"/></marker></defs>${svgEdges}${svgNodes}</svg></div></section>
 <section><h2>Evidence-linked relationships</h2><table><thead><tr><th>From</th><th>Kind</th><th>To</th><th>Evidence</th></tr></thead><tbody>${lines || '<tr><td colspan="4">No relationships in selected view.</td></tr>'}</tbody></table></section>
 <section><h2>Unresolved / external references</h2><ul>${issues.slice(0,80).map(x=>'<li>'+escapeHtml(x)+'</li>').join('') || '<li>None for selected source.</li>'}</ul></section>
-<script nonce="${nonce}">const api=acquireVsCodeApi();const edgeEvidence=${JSON.stringify([])};const send=(action,extra={})=>api.postMessage({action,...extra});for(const id of ['node','direction','depth','type','kind'])document.getElementById(id).addEventListener('change',()=>send('select',{selected:document.getElementById('node').value,direction:document.getElementById('direction').value,depth:Number(document.getElementById('depth').value),type:document.getElementById('type').value,kind:document.getElementById('kind').value}));document.getElementById('open').addEventListener('click',()=>send('open',{file:document.getElementById('node').value,line:1}));document.getElementById('mermaid').addEventListener('click',()=>send('mermaid'));document.querySelectorAll('[data-select]').forEach(b=>b.addEventListener('click',()=>send('select',{selected:b.dataset.select,direction:document.getElementById('direction').value,depth:Number(document.getElementById('depth').value),type:document.getElementById('type').value,kind:document.getElementById('kind').value})));const svg=document.getElementById('architecture-svg');const viewport=document.getElementById('graph-viewport');let scale=1;const apply=()=>{svg.setAttribute('width',String(${visual.width}*scale));svg.setAttribute('height',String(${visual.height}*scale));};document.getElementById('zoom-in').addEventListener('click',()=>{scale=Math.min(2.5,scale+.2);apply()});document.getElementById('zoom-out').addEventListener('click',()=>{scale=Math.max(.4,scale-.2);apply()});document.getElementById('zoom-reset').addEventListener('click',()=>{scale=1;apply();viewport.scrollTo(0,0)});let dragging=false,startX=0,startY=0,scrollX=0,scrollY=0;viewport.addEventListener('pointerdown',e=>{if(e.target.closest('[data-node]'))return;dragging=true;startX=e.clientX;startY=e.clientY;scrollX=viewport.scrollLeft;scrollY=viewport.scrollTop});viewport.addEventListener('pointermove',e=>{if(dragging){viewport.scrollLeft=scrollX-(e.clientX-startX);viewport.scrollTop=scrollY-(e.clientY-startY)}});viewport.addEventListener('pointerup',()=>dragging=false);viewport.addEventListener('pointercancel',()=>dragging=false);svg.querySelectorAll('[data-edge]').forEach(e=>{const open=()=>send('edge',{index:Number(e.dataset.edge)});e.addEventListener('click',open);e.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();open()}})});svg.querySelectorAll('[data-node]').forEach(n=>{const select=()=>send('select',{selected:n.dataset.node,direction:document.getElementById('direction').value,depth:Number(document.getElementById('depth').value),type:document.getElementById('type').value,kind:document.getElementById('kind').value});n.addEventListener('click',select);n.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select()}})});document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>send('open',{file:b.dataset.open,line:Number(b.dataset.line)})));</script>
+<script nonce="${nonce}">const api=acquireVsCodeApi();const send=(action,extra={})=>api.postMessage({action,...extra});for(const id of ['node','direction','depth','type','kind'])document.getElementById(id).addEventListener('change',()=>send('select',{selected:document.getElementById('node').value,direction:document.getElementById('direction').value,depth:Number(document.getElementById('depth').value),type:document.getElementById('type').value,kind:document.getElementById('kind').value}));document.getElementById('open').addEventListener('click',()=>send('open',{file:document.getElementById('node').value,line:1}));document.getElementById('mermaid').addEventListener('click',()=>send('mermaid'));document.querySelectorAll('[data-select]').forEach(b=>b.addEventListener('click',()=>send('select',{selected:b.dataset.select,direction:document.getElementById('direction').value,depth:Number(document.getElementById('depth').value),type:document.getElementById('type').value,kind:document.getElementById('kind').value})));const svg=document.getElementById('architecture-svg');const viewport=document.getElementById('graph-viewport');let scale=1;const apply=()=>{svg.setAttribute('width',String(${visual.width}*scale));svg.setAttribute('height',String(${visual.height}*scale));};document.getElementById('zoom-in').addEventListener('click',()=>{scale=Math.min(2.5,scale+.2);apply()});document.getElementById('zoom-out').addEventListener('click',()=>{scale=Math.max(.4,scale-.2);apply()});document.getElementById('zoom-reset').addEventListener('click',()=>{scale=1;apply();viewport.scrollTo(0,0)});let dragging=false,startX=0,startY=0,scrollX=0,scrollY=0;viewport.addEventListener('pointerdown',e=>{if(e.target.closest('[data-node]'))return;dragging=true;startX=e.clientX;startY=e.clientY;scrollX=viewport.scrollLeft;scrollY=viewport.scrollTop});viewport.addEventListener('pointermove',e=>{if(dragging){viewport.scrollLeft=scrollX-(e.clientX-startX);viewport.scrollTop=scrollY-(e.clientY-startY)}});viewport.addEventListener('pointerup',()=>dragging=false);viewport.addEventListener('pointercancel',()=>dragging=false);svg.querySelectorAll('[data-edge]').forEach(e=>{const open=()=>send('edge',{index:Number(e.dataset.edge)});e.addEventListener('click',open);e.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();open()}})});svg.querySelectorAll('[data-node]').forEach(n=>{const select=()=>send('select',{selected:n.dataset.node,direction:document.getElementById('direction').value,depth:Number(document.getElementById('depth').value),type:document.getElementById('type').value,kind:document.getElementById('kind').value});n.addEventListener('click',select);n.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select()}})});document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>send('open',{file:b.dataset.open,line:Number(b.dataset.line)})));</script>
 </body></html>`;
 }
 
 async function showArchitectureExplorer(folder, options = {}) {
   if (!folder) { vscode.window.showInformationMessage('CAssets: open a workspace first.'); return; }
+  if (!vscode.workspace.isTrusted) { vscode.window.showWarningMessage('CAssets: Trust this workspace to scan architecture.'); return; }
   const result = await scanWorkspace(folder, options);
   const panel = vscode.window.createWebviewPanel('cassets.architectureExplorer', 'CAssets · Architecture Explorer',
     vscode.ViewColumn.One, { enableScripts: true });
@@ -116,6 +119,7 @@ async function showArchitectureExplorer(folder, options = {}) {
   let direction = 'both', depth = 1, type = 'all', kind = 'all';
   const render = () => { panel.webview.html = view(result, selected, direction, depth, nonce, type, kind); };
   panel.webview.onDidReceiveMessage(async message => {
+    if (!vscode.workspace.workspaceFolders?.some(f => f.uri.toString() === result.folderUri)) return;
     if (!message || typeof message.action !== 'string') return;
     if (message.action === 'select') {
       if (!result.nodes.some(n => n.id === message.selected)) return;
@@ -131,18 +135,18 @@ async function showArchitectureExplorer(folder, options = {}) {
       const edges = layout(result, selected, direction, depth, type, kind).edges;
       if (!Number.isInteger(message.index) || message.index < 0 || message.index >= edges.length) return;
       const evidence = edges[message.index].evidence;
-      if (!evidence || !result.nodes.some(n => n.id === evidence.file)) return;
+      if (!evidence || !knownSource(result, evidence.file) || !vscode.workspace.isTrusted) return;
       const document = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(folder.uri, evidence.file));
       const editor = await vscode.window.showTextDocument(document, { preview: true });
-      const line = Math.max(0, Math.min(document.lineCount - 1, (Number(evidence.line) || 1) - 1));
+      const line = boundedLine(evidence.line, document.lineCount);
       editor.selection = new vscode.Selection(line, 0, line, 0);
       editor.revealRange(new vscode.Range(line, 0, line, 0));
     } else if (message.action === 'open') {
-      if (typeof message.file !== 'string' || !result.nodes.some(n => n.id === message.file)) return;
+      if (!knownSource(result, message.file) || !vscode.workspace.isTrusted) return;
       const uri = vscode.Uri.joinPath(folder.uri, message.file);
       const document = await vscode.workspace.openTextDocument(uri);
       const editor = await vscode.window.showTextDocument(document, { preview: true });
-      const line = Math.max(0, Math.min(document.lineCount - 1, (Number(message.line) || 1) - 1));
+      const line = boundedLine(message.line, document.lineCount);
       editor.selection = new vscode.Selection(line, 0, line, 0);
       editor.revealRange(new vscode.Range(line, 0, line, 0));
     } else if (message.action === 'mermaid') {
