@@ -4,11 +4,11 @@ A2 is not accepted by unit tests alone. Complete this gate **before A3**.
 
 ## Build and install
 
-1. Wait for both GitHub workflows (CI and Extension CI) to pass, including Node 20/22, Linux/Windows extension-host tests, and VSIX packaging.
-2. In the PR's Actions page, download the `cassets-vsix-<commit>` artifact from the **Package VSIX** job. Extract `cassets-ci.vsix`.
-3. In a separate VS Code profile, run **Extensions: Install from VSIX…**, choose `cassets-ci.vsix`, and reload.
+1. Confirm required CI checks pass (including Linux/Windows extension-host tests). The dedicated **CodeSight A2 VSIX Release Candidate** workflow packages a pre-release VSIX without Marketplace publishing; it checks the packaged manifest and PNG icon and records a SHA-256 checksum.
+2. From **Actions → CodeSight A2 VSIX Release Candidate → Run workflow**, select the approved branch and download the resulting `codesight-a2-rc-<commit>` artifact containing `codesight-a2-rc.vsix` and its `.sha256` checksum. Alternatively use the existing Extension CI `cassets-vsix-<commit>` artifact containing `cassets-ci.vsix`.
+3. In a separate VS Code profile, run **Extensions: Install from VSIX…**, choose the extracted `.vsix`, and reload. Compare the file's SHA-256 with the accompanying checksum when using the dedicated RC workflow.
 4. Verify the installed extension is **CAssets CodeSight — DevReady**, publisher `clusterassets`, and the installed version matches `package.json`.
-5. Alternatively, after `npm ci`, run `npm run package:pre -- --out codesight-a2-rc.vsix` and install it with `code --install-extension codesight-a2-rc.vsix --force`. This is a pre-release build, not Marketplace publication.
+5. Alternatively, after `npm ci`, run `npm run package:pre -- --out codesight-a2-rc.vsix` and install it with `code --install-extension codesight-a2-rc.vsix --force`. A clean VS Code profile is still recommended for acceptance. Packaging does not publish to Marketplace.
 
 ## Manual acceptance matrix
 
