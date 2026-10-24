@@ -22,7 +22,7 @@ test('two workspace roots scan independently and exclude symlink escape', async 
       findFiles:async pattern=>(await fs.readdir(pattern.base.uri.fsPath)).filter(n=>n.endsWith('.js')).map(n=>({
         scheme:'file',authority:'',fsPath:path.join(pattern.base.uri.fsPath,n),path:path.join(pattern.base.uri.fsPath,n)
       })),
-      fs:{stat:fs.stat,readFile:fs.readFile}
+      fs:{stat:uri=>fs.stat(uri.fsPath),readFile:uri=>fs.readFile(uri.fsPath)}
     },
     RelativePattern:class {constructor(base){this.base=base;}}
   };
