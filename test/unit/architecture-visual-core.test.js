@@ -19,3 +19,13 @@ test('type filtering retains selected node and drops hidden edges', () => {
   assert.equal(result.nodes.length,2);
   assert.equal(layout(graph,'a','both',1,'go').edges.length,0);
 });
+
+test('relationship kind filters edges without removing selected node', () => {
+  const graph = { nodes: ['a','b'].map(id=>({id,type:'javascript'})),
+    edges: [{from:'a',to:'b',kind:'import'}, {from:'a',to:'b',kind:'require'}],
+    unresolved:[],external:[] };
+  assert.equal(layout(graph,'a','both',1,'all','import').edges.length,1);
+  assert.equal(layout(graph,'a','both',1,'all','require').edges.length,1);
+  assert.equal(layout(graph,'a','both',1,'all','unknown').edges.length,0);
+  assert.equal(layout(graph,'a','both',1,'all','unknown').nodes.length,2);
+});
