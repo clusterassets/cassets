@@ -1,0 +1,71 @@
+name: CodeSight A2 VSIX Release Candidate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/codesight-rc.yml"
+      - "scripts/generate-codesight-icon.cjs"
+      - "package.json"
+      - "README.md"
+
+permissions:
+  contents: read
+
+jobs:
+  release-candidate:
+    name: Validate and package A2 VSIX
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Validate manifest
+        run: npm run validate
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Integration tests
+        run: xvfb-run -a npm run test:integration
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Generate package icon
+        run: node scripts/generate-codesight-icon.cjs
+      - name: Package pre-release VSIX (no Marketplace publish)
+        run: npx vsce package --pre-release --out codesight-a2-rc.vsix
+      - name: Verify packaged manifest and icon
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, zipfile, struct, pathlib
+          p = pathlib.Path("codesight-a2-rc.vsix")
+          with zipfile.ZipFile(p) as z:
+              names = set(z.namelist())
+              assert "extension/package.json" in names, "Missing extension/package.json"
+              manifest = json.loads(z.read("extension/package.json"))
+              assert manifest["name"] == "cassets"
+              assert manifest["publisher"] == "clusterassets"
+              assert manifest["displayName"] == "CAssets CodeSight — DevReady"
+              icon = "extension/" + manifest["icon"]
+              assert icon in names, f"Missing packaged icon: {icon}"
+              png = z.read(icon)
+              assert png[:8] == b"\x89PNG\r\n\x1a\n", "Packaged icon is not PNG"
+              width, height = struct.unpack(">II", png[16:24])
+              assert (width, height) == (256, 256), f"Unexpected icon size: {width}x{height}"
+              print(f"Verified {manifest['publisher']}.{manifest['name']} v{manifest['version']}; PNG {width}x{height}")
+          PY
+      - name: Record checksum
+        run: sha256sum codesight-a2-rc.vsix > codesight-a2-rc.vsix.sha256
+      - name: Upload candidate and checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: codesight-a2-rc-${{ github.sha }}
+          path: |
+            codesight-a2-rc.vsix
+            codesight-a2-rc.vsix.sha256
+          if-no-files-found: error
+          retention-days: 30
