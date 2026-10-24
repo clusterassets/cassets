@@ -1,18 +1,28 @@
-# CAssets DevReady Documentation
+# CodeSight documentation
+
+![CodeSight architecture](images/codesight-architecture.svg)
+
+**CAssets CodeSight — DevReady for VS Code** combines native-first workstation readiness with evidence-backed repository and architecture exploration.
 
 ## Start here
 
-1. [Product Overview](PRODUCT.md)
-2. [Architecture](ARCHITECTURE.md)
-3. [How It Works](HOW-IT-WORKS.md)
-4. [Command Reference](COMMANDS.md)
-5. [Configuration](CONFIGURATION.md)
-6. [Security and Trust](SECURITY-AND-TRUST.md)
-7. [Developer Intelligence](DEVELOPER-INTELLIGENCE.md)
-8. [Contributor Orchestrator](CONTRIBUTOR-ORCHESTRATOR.md)
-9. [Developer Experience](DEVELOPER-EXPERIENCE.md)
-10. [Release and Publishing](RELEASE-AND-PUBLISHING.md)
-11. [Repository Setup](REPOSITORY-SETUP.md)
-12. [Roadmap](ROADMAP.md)
+- [Product overview](PRODUCT.md) — positioning, capabilities and boundaries
+- [Architecture](ARCHITECTURE.md) — actual module boundaries and source-reference flow
+- [Roadmap](ROADMAP.md) — A1, A2 acceptance, A3 and later milestones
+- [A2 VSIX acceptance](CODESIGHT_A2_VSIX_ACCEPTANCE.md) — install and verify in real VS Code
+- [How it works](HOW-IT-WORKS.md)
+- [Commands](COMMANDS.md)
+- [Configuration](CONFIGURATION.md)
+- [Security and trust](SECURITY-AND-TRUST.md)
+- [Developer intelligence](DEVELOPER-INTELLIGENCE.md)
+- [Contributor orchestrator](CONTRIBUTOR-ORCHESTRATOR.md)
+- [Developer experience](DEVELOPER-EXPERIENCE.md)
+- [Workstation engine](WORKSTATION-ENGINE.md)
+- [Release and publishing](RELEASE-AND-PUBLISHING.md)
+- [Repository setup](REPOSITORY-SETUP.md)
 
-- [Workstation Engine](WORKSTATION-ENGINE.md) — native-first VS Code setup for fresh/corporate machines.
+## Visuals
+
+![Feature workflow](images/codesight-workflow.svg)
+
+Diagrams in `docs/images/` are source-controlled SVG illustrations of the intended workflow, **not screenshots or proof of runtime acceptance**. The approved icon source is `../images/codesight-icon.svg`; marketplace PNG parity remains part of the A2 acceptance gate.

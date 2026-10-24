@@ -1,102 +1,46 @@
-# Architecture
+# CodeSight Architecture
 
-## High-level architecture
+![Architecture overview](images/codesight-architecture.svg)
+
+## Runtime boundaries
+
+CodeSight runs in the VS Code extension host and uses VS Code APIs for workspace discovery, documents, tasks, debugging, UI and trust. Static architecture analyzers are local modules; the Architecture Explorer presents their results in a CSP-restricted webview.
 
 ```text
 VS Code Extension Host
-        │
-        ▼
-CAssets DevReady
-        │
-        ├── Stack Detector
-        ├── Developer Intelligence Engine
-        ├── Capability Planner
-        ├── Workspace Graph
-        ├── Prerequisite Analyzer
-        ├── Policy Engine
-        ├── Template Engine
-        ├── Workspace Configurator
-        ├── Contributor Orchestrator
-        └── Project Health
+  ├── Project Understanding / Workspace Doctor
+  ├── Workstation / Native Capability / Prerequisite Engines
+  ├── Run / Test / Debug / Task Lifecycle / Service Readiness
+  └── Architecture Explorer
+       ├── architecture-analyzers.js  (language patterns)
+       ├── architecture-core.js       (nodes, edges, evidence, limits)
+       ├── architecture-view-core.js  (bounded neighborhood)
+       ├── architecture-visual-core.js (bounded layout)
+       ├── architecture-navigation.js (known source + realpath containment)
+       └── architecture-explorer.js   (scan + VS Code webview + source opening)
 ```
 
-## Design principles
+## Architecture Explorer flow
 
-### Built-in first
-Prefer VS Code built-in capabilities before extensions.
+1. Check Workspace Trust and select an explicit workspace root.
+2. Discover bounded candidate files using VS Code workspace APIs.
+3. Validate relative paths and canonical filesystem containment; exclude symlink escapes.
+4. Read bounded files and extract provisional language-specific static references.
+5. Classify local, external and unresolved references; attach source-line evidence.
+6. Build a bounded neighborhood and deterministic graph projection.
+7. Render keyboard-accessible nodes, edges and evidence links.
+8. Before opening a source, validate its known identity, workspace trust and containment again.
 
-### Repository evidence
-Prefer explicit project metadata over generic assumptions.
+**Current limits:** default scan 300 files (configurable cap 1,000); 256 KiB/file by default (cap 1 MiB); graph projection 90 nodes / 180 edges. Some non-file virtual workspaces are currently rejected by canonical containment; do not claim universal remote workspace support.
 
-### Non-executing detection
-Repository content is treated as data. Detection does not execute repository lifecycle scripts.
+## Security and ownership
 
-### Developer ownership
-Existing project files are preserved. Initialized baselines become developer-owned immediately.
+Repository contents are untrusted data. Static scans do not execute discovered scripts. Running tasks and modifying configuration require deliberate developer action. Existing files are preserved. Evidence is provisional; neither source import nor a successful health probe proves a system-wide architecture guarantee.
 
-### Explicit execution
-Inferred repository commands are displayed and executed only after developer approval.
+## Current implementation limitations
 
-## Modules
+The Architecture Explorer currently reconstructs the webview document on selection; fully progressive DOM updates are not yet implemented. Extension-host UI acceptance, large-repository measurements and packaged icon parity are release gates, not established results.
 
-```text
-src/modules/
-├── detectors.js
-├── intelligence-core.js
-├── intelligence.js
-├── capabilities.js
-├── prerequisites.js
-├── workspace-graph-core.js
-├── workspace-graph.js
-├── onboarding.js
-├── policy.js
-├── templates.js
-├── workspace.js
-├── health.js
-└── utils.js
-```
+## Next stages
 
-## Data flow
-
-```text
-Workspace
-  ↓
-Stack Detector
-  ↓
-Repository Stack Model
-  ↓
-Developer Intelligence
-  ↓
-Runtime / Tool / Ownership Model
-  ↓
-Workspace Graph + Prerequisites
-  ↓
-Contributor Readiness
-  ↓
-Capability + Policy Engines
-  ↓
-Tasks / Debug / Templates / Extensions / Health
-```
-
-## v0.7 Workstation Engine
-
-```text
-VS Code installation
-  ↓
-Native capability inventory
-  ↓
-Professional baseline evaluator
-  ├─ already satisfied by VS Code default → no write
-  ├─ explicit developer value → preserve
-  └─ missing professional baseline → apply after explicit command
-  ↓
-Repository stack detection
-  ↓
-Stack-aware watcher/search optimization
-  ↓
-Capability gap analysis
-  ↓
-Minimal extension recommendations
-```
-
-The Workstation Engine is deliberately separate from repository baseline generation. User-level workstation initialization does not change themes, keybindings, accounts, AI providers, Git identity or extension-specific settings.
+[A2 acceptance](CODESIGHT_A2_VSIX_ACCEPTANCE.md) → [A3 conformance](ROADMAP.md) → source-linked change-impact intelligence.

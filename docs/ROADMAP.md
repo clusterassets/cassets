@@ -1,71 +1,49 @@
-# Roadmap
+# CodeSight Roadmap
 
-## v0.1 — Workspace Bootstrap
-Initial VS Code workspace automation.
+![Roadmap and workflow](images/codesight-workflow.svg)
 
-## v0.2 — Project Baseline Engine
-Professional project baselines and ownership rules.
+This roadmap separates **code merged**, **validated in CI**, **verified in real VS Code**, and **released**. Merging a PR does not automatically advance an acceptance gate.
 
-## v0.3 — Marketplace Release Candidate
-Public-safe onboarding and packaging.
+## Completed implementation foundations
 
-## v0.4 — Public Repository Automation
-CI/CD, security checks, semantic releases and Marketplace publication.
+- **v0.1–v0.4:** workspace bootstrap, project baselines, public repository and release automation.
+- **v0.5–v0.7:** developer intelligence, contributor onboarding, native-first workstation readiness.
+- **Developer pillars:** project overview, workspace doctor, native task/debug integration, task lifecycle and service readiness implemented incrementally.
+- **A1:** preliminary multi-language source-reference discovery with source evidence, unresolved/external classifications and explicit limitations.
+- **A2 implementation to date:** bounded visual graph, filters, keyboard-operable nodes/edges, source navigation, multi-root isolation, symlink containment, viewport persistence and regression tests.
 
-## v0.5 — Developer Intelligence Engine
-Runtime, package-manager, tooling ownership, environment discovery and richer health.
+## A2 — Release-candidate acceptance (current gate)
 
-## v0.6 — Contributor & Workspace Orchestrator
-Prerequisite checks, contributor onboarding, first-run recommendations and Node workspace graphs.
+**Status: pending, not accepted.**
 
-## v0.7 — Native-First Workstation Engine
+| Workstream | Required evidence | State |
+| --- | --- | --- |
+| Security and correctness | Trust enforcement, root isolation, symlink escape rejection, bounded source opening | Implemented; end-to-end acceptance pending |
+| Interactive UI | Selection, focus, zoom, pan, keyboard evidence navigation in VS Code | Manual/host validation pending |
+| Rendering | Avoid full webview document recreation during selection; verify large graph responsiveness | Pending |
+| Performance | Measured scans on large multi-language repositories and bounded memory | Pending |
+| Packaging | Node 20/22 CI, extension-host checks, installable pre-release VSIX | Acceptance pending |
+| Visual identity | Compare packaged PNG with approved CodeSight SVG at marketplace sizes | Pending |
 
-- professional VS Code user baseline for fresh/corporate machines
-- existing explicit user settings preserved as developer-owned
-- native capability inventory and coverage indicator
-- extension-gap reporting instead of extension-pack behavior
-- stack-aware watcher/search exclusions for repository performance
-- workstation health view
-- non-blocking first-run consent lifecycle
-- CI/release workflow alignment with protected `main` and tag-based Marketplace publication
+**Gate:** [Install and verify the VSIX](CODESIGHT_A2_VSIX_ACCEPTANCE.md), record pass/fail evidence, and fix critical/high defects before declaring A2 complete.
 
-## Planned v0.8 — Multi-Language Graph & Verification Engine
+## A3 — Evidence-based architecture conformance (not started)
 
-Planned:
+Planned only after A2 acceptance:
+- Developer-defined architecture constraints and allowed dependency directions.
+- Compare observed static source relationships against explicit constraints.
+- Report violations with navigable file/line evidence, confidence and false-positive controls.
+- Distinguish verified constraints from inference; never claim runtime conformance from static scans alone.
+- Read-only evaluation by default; no silent repository rewrites.
 
-- .NET solution/project-reference graph
-- Cargo workspace graph
-- Go workspace graph
-- Maven/Gradle modules
-- Python monorepo/workspace support
-- dependency-aware build/test ordering
-- explicit build/test success verification
-- Project Health verification state
+## Later — Change Impact and Incremental Intelligence
 
-## Future direction
+Research and design targets: bounded incremental indexing, source-backed change impact, multi-language parser upgrades, opt-in local context export for agents, and performance budgets. New dependencies require separate security and footprint review.
 
-Potential:
+## Release discipline
 
-- profile-aware workstation initialization
-- richer extension-capability conflict analysis
-- contributor onboarding reports
-- framework adapters
-- team/organization policy packs
-- optional enterprise governance while keeping the open-source core useful
-
-## Release safety: purpose-driven project files
-
-- Opening, rescanning, and trusting a workspace are inspection-only operations, regardless of the legacy `cassets.mode` value.
-- Repository file generation requires an explicit developer command; existing project files remain developer-owned.
-- Each proposed file must have a documented consumer, concrete purpose, necessity, ownership model, and verification path.
-- `.cassets/` project intelligence and policies are optional and require deliberate initialization. Local indexes are preferred to committed generated artifacts.
-- `AGENTS.md`, `CONTRIBUTING.md`, skills, and Tree-sitter-backed indexes must not be created without a concrete use case and an identified consumer.
-
-## Proposed product pillars (implementation pending)
-
-1. Project Understanding: read-only stack, entry-point, script, and dependency discovery.
-2. Workspace Doctor: actionable prerequisite and configuration diagnosis.
-3. Run/Test/Debug: reuse existing commands and VS Code native facilities; verify outcomes.
-4. Change Impact: source-linked impact analysis with bounded, incremental indexing.
-
-Future agent integration may expose bounded code context and policy checks. Index summaries must never replace source-level verification. New parser or MCP dependencies require a separate design and performance review.
+- Keep existing repository files developer-owned.
+- No automatic creation of AGENTS.md, CONTRIBUTING.md, policies or indexes without a concrete consumer and explicit action.
+- Prefer native VS Code capabilities.
+- Run CI and test the packaged extension in a clean VS Code profile before publication.
+- Version and Marketplace publishing remain a separate, explicitly approved release action.

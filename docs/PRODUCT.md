@@ -1,57 +1,34 @@
-# Product Overview
+# CAssets CodeSight — Product Overview
 
-## Product
+![CodeSight identity](../images/codesight-icon.svg)
 
-**CAssets DevReady**
+**Tagline:** Understand your code. See dependencies. Develop with confidence.
 
-**Tagline:** Clone. Open. Code.
-
-## Public identity
-
-```text
-Publisher:      ClusterAssets
-Package name:   cassets
-Extension ID:   clusterassets.cassets
-Repository:     clusterassets/cassets
-Display name:   CAssets DevReady — Clone. Open. Code.
-```
+**Publisher:** ClusterAssets · **Creator:** Vivek Rao Bhosale · **Package:** `cassets` · **Extension ID:** `clusterassets.cassets` · **VS Code display name:** `CAssets CodeSight — DevReady`.
 
 ## Mission
 
-Reduce repetitive development-environment and repository setup so developers can focus on software delivery.
+Reduce time spent discovering unfamiliar codebases, identifying setup gaps and guessing which commands or dependencies matter. Help experienced developers and AI-assisted developers validate their understanding against real source evidence, without replacing engineering judgment.
 
-DevReady should make VS Code and an unfamiliar repository behave as though an experienced developer already prepared the professional baseline—without hiding or taking ownership away from the developer.
+## Current product pillars
+
+1. **Project Understanding:** languages, runtime and package manager signals, workspace packages, scripts and static source relationships.
+2. **Workspace Doctor:** actionable prerequisite and configuration diagnostics.
+3. **Run / Test / Debug:** reuse native VS Code facilities and existing repository commands with explicit consent.
+4. **Architecture Explorer:** bounded graph navigation, filters, source-linked static evidence and provisional language coverage.
+
+**Change Impact** and **A3 Architecture Conformance** are future milestones, not current verified capabilities.
 
 ## Target users
 
-- individual developers
-- open-source contributors
-- freelancers
-- senior engineers working across many stacks
-- developers onboarding to unfamiliar repositories
-- small teams without dedicated developer-experience engineering
+Developers onboarding to unfamiliar repositories, maintainers, technical leads, open-source contributors, and developers validating AI-assisted code changes.
 
-## North-star metric
+## Metrics
 
-**Clone-to-first-successful-build time**
+Primary: time to verified first successful build and time to locate a source-backed dependency. Secondary: unnecessary setup avoided, navigation accuracy, scan latency, UI responsiveness, and security boundary violations.
 
-Secondary metrics include:
+## Boundaries
 
-- setup steps eliminated
-- missing prerequisites detected before build
-- recommendations derived from repository evidence
-- developer-owned files preserved
-- extensions avoided through built-in-first capability selection
+CodeSight is not an autonomous shell agent, IDE replacement, cloud repository uploader, architecture certification engine, secret manager or guaranteed runtime dependency tracer. Static references are hypotheses with evidence, not proof of runtime behavior.
 
-## Non-goals
-
-DevReady is not:
-
-- an IDE replacement
-- a package manager
-- a runtime installer
-- a deployment system
-- a secret manager
-- an autonomous shell agent
-- a replacement for project documentation
-- a substitute for architecture or engineering judgment
+See [Architecture](ARCHITECTURE.md), [Roadmap](ROADMAP.md) and [A2 acceptance](CODESIGHT_A2_VSIX_ACCEPTANCE.md).
