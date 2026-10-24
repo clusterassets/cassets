@@ -3,7 +3,7 @@ const vscode = require('vscode');
 const { discover } = require('./architecture-core');
 const { neighborhood, detail } = require('./architecture-view-core');
 const { layout } = require('./architecture-visual-core');
-const { safeRelative, knownSource, boundedLine } = require('./architecture-navigation');
+const { safeRelative, knownSource, boundedLine, containedSource } = require('./architecture-navigation');
 const crypto = require('node:crypto');
 const { analyzerFor, manifests, classify } = require('./architecture-analyzers');
 
@@ -136,7 +136,9 @@ async function showArchitectureExplorer(folder, options = {}) {
       if (!Number.isInteger(message.index) || message.index < 0 || message.index >= edges.length) return;
       const evidence = edges[message.index].evidence;
       if (!evidence || !knownSource(result, evidence.file) || !vscode.workspace.isTrusted) return;
-      const document = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(folder.uri, evidence.file));
+      const target = vscode.Uri.joinPath(folder.uri, evidence.file);
+      if (!await containedSource(folder.uri, target)) return;
+      const document = await vscode.workspace.openTextDocument(target);
       const editor = await vscode.window.showTextDocument(document, { preview: true });
       const line = boundedLine(evidence.line, document.lineCount);
       editor.selection = new vscode.Selection(line, 0, line, 0);
@@ -144,6 +146,7 @@ async function showArchitectureExplorer(folder, options = {}) {
     } else if (message.action === 'open') {
       if (!knownSource(result, message.file) || !vscode.workspace.isTrusted) return;
       const uri = vscode.Uri.joinPath(folder.uri, message.file);
+      if (!await containedSource(folder.uri, uri)) return;
       const document = await vscode.workspace.openTextDocument(uri);
       const editor = await vscode.window.showTextDocument(document, { preview: true });
       const line = boundedLine(message.line, document.lineCount);

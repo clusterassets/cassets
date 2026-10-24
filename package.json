@@ -1,6 +1,6 @@
 {
   "name": "cassets",
-  "displayName": "CAssets DevReady — Clone. Open. Code.",
+  "displayName": "CAssets CodeSight — DevReady",
   "description": "Native-first VS Code workstation and repository readiness engine. CAssets DevReady applies a safe professional baseline, minimizes extension dependency, detects project requirements, and guides contributors to the first successful build.",
   "version": "0.7.0",
   "publisher": "clusterassets",

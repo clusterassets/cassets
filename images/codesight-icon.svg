@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="CAssets CodeSight compass icon">
+<defs><linearGradient id="g" x1="0" x2="1" y1="1" y2="0"><stop stop-color="#8a40f7"/><stop offset=".55" stop-color="#3485ff"/><stop offset="1" stop-color="#35e0e5"/></linearGradient></defs>
+<rect width="256" height="256" rx="54" fill="#0b1224"/>
+<path d="M189 69a84 84 0 1 0 1 116" fill="none" stroke="url(#g)" stroke-width="29" stroke-linecap="round"/>
+<path d="m148 86-21 46-43 39 53-20 36-58z" fill="#fff" stroke="#8bdcff" stroke-width="4" stroke-linejoin="round"/>
+<circle cx="128" cy="128" r="7" fill="#162e64"/>
+</svg>
