@@ -17,7 +17,7 @@ function declaredServices(pkg, limit = 24) {
     const host = item.host === '::1' ? '::1' : item.host === '127.0.0.1' || item.host === undefined ? '127.0.0.1' : null;
     if (!host || seen.has(name)) continue;
     seen.add(name);
-    const healthPath = typeof item.healthPath === 'string' && /^\/[a-zA-Z0-9/_-]{0,120}$/.test(item.healthPath) ? item.healthPath : null;
+    const healthPath = typeof item.healthPath === 'string' && /^\/(?!\/)[a-zA-Z0-9/_-]{0,120}$/.test(item.healthPath) ? item.healthPath : null;
     result.push({ name, host, port, healthPath, dependsOn: Array.isArray(item.dependsOn) ?
       item.dependsOn.filter(x => typeof x === 'string' && x.length <= 80).slice(0, 20) : [] });
   }
