@@ -49,10 +49,12 @@ function mermaid(result) {
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
 }
-function view(graph, selected, direction, depth, nonce) {
+function view(graph, selected, direction, depth, nonce, type = 'all', kind = 'all') {
   const slice = neighborhood(graph, selected, direction, depth);
   const item = detail(graph, selected);
-  const visual = layout(graph, selected, direction, depth);
+  const visual = layout(graph, selected, direction, depth, type, kind);
+  const types = [...new Set(graph.nodes.map(n => n.type))].sort();
+  const kinds = [...new Set(graph.edges.map(e => e.kind))].sort();
   const items = graph.nodes.slice(0, 300).map(n =>
     '<option value="' + escapeHtml(n.id) + '"' + (n.id === selected ? ' selected' : '') + '>' + escapeHtml(n.id) + '</option>').join('');
   const lines = slice.edges.slice(0, 300).map(e =>
@@ -66,8 +68,10 @@ function view(graph, selected, direction, depth, nonce) {
     if (!from || !to) return '';
     const x1 = from.x + from.width / 2, y1 = from.y + from.height / 2;
     const x2 = to.x + to.width / 2, y2 = to.y + to.height / 2;
-    return '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 +
-      '" stroke="currentColor" stroke-opacity=".45" stroke-width="1.5" marker-end="url(#arrow)"/>';
+    return '<g role="button" tabindex="0" data-edge="' + i + '" aria-label="Open evidence for ' +
+      escapeHtml(edge.from + ' to ' + edge.to) + '"><line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 +
+      '" stroke="currentColor" stroke-opacity=".5" stroke-width="2" marker-end="url(#arrow)"/><line x1="' + x1 +
+      '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="transparent" stroke-width="16"/></g>';
   }).join('');
   const svgNodes = visual.nodes.map(n => '<g data-node="' + escapeHtml(n.id) + '" role="button" tabindex="0" aria-label="Select ' +
     escapeHtml(n.id) + '"><rect x="' + n.x + '" y="' + n.y + '" width="' + n.width + '" height="' + n.height +
@@ -87,6 +91,8 @@ function view(graph, selected, direction, depth, nonce) {
 <label for="node">Source node</label><select id="node">${items}</select>
 <label for="direction">Relationships</label><select id="direction"><option value="both" ${direction==='both'?'selected':''}>Both</option><option value="incoming" ${direction==='incoming'?'selected':''}>Incoming</option><option value="outgoing" ${direction==='outgoing'?'selected':''}>Outgoing</option></select>
 <label for="depth">Depth</label><select id="depth">${[1,2,3,4].map(n=>'<option value="'+n+'" '+(depth===n?'selected':'')+'>'+n+'</option>').join('')}</select>
+<label for="type">File type</label><select id="type"><option value="all">All</option>${types.map(t => '<option value="'+escapeHtml(t)+'" '+(type===t?'selected':'')+'>'+escapeHtml(t)+'</option>').join('')}</select>
+<label for="kind">Relationship</label><select id="kind"><option value="all">All</option>${kinds.map(k => '<option value="'+escapeHtml(k)+'" '+(kind===k?'selected':'')+'>'+escapeHtml(k)+'</option>').join('')}</select>
 <button id="open">Open selected source</button><button id="mermaid">Open Mermaid text</button>
 <section><h2>${escapeHtml(selected)}</h2><p>Type: ${escapeHtml(item?.node.type || 'unknown')} · Analyzer: ${escapeHtml(item?.node.analyzer || 'none')}</p><p>Incoming: ${item?.incoming.length || 0} · Outgoing: ${item?.outgoing.length || 0} · View: ${slice.nodes.length} nodes, ${slice.edges.length} edges ${slice.truncated ? '(bounded)' : ''}</p></section>
 <section><h2>Visual dependency graph</h2><small>Bounded to 90 nodes / 180 edges. Select nodes to explore. Zoom and pan are local to the graph. ${visual.truncated ? 'View truncated.' : ''}</small>
@@ -96,7 +102,7 @@ function view(graph, selected, direction, depth, nonce) {
 <defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="none" stroke="currentColor"/></marker></defs>${svgEdges}${svgNodes}</svg></div></section>
 <section><h2>Evidence-linked relationships</h2><table><thead><tr><th>From</th><th>Kind</th><th>To</th><th>Evidence</th></tr></thead><tbody>${lines || '<tr><td colspan="4">No relationships in selected view.</td></tr>'}</tbody></table></section>
 <section><h2>Unresolved / external references</h2><ul>${issues.slice(0,80).map(x=>'<li>'+escapeHtml(x)+'</li>').join('') || '<li>None for selected source.</li>'}</ul></section>
-<script nonce="${nonce}">const api=acquireVsCodeApi();const send=(action,extra={})=>api.postMessage({action,...extra});for(const id of ['node','direction','depth'])document.getElementById(id).addEventListener('change',()=>send('select',{selected:document.getElementById('node').value,direction:document.getElementById('direction').value,depth:Number(document.getElementById('depth').value)}));document.getElementById('open').addEventListener('click',()=>send('open',{file:document.getElementById('node').value,line:1}));document.getElementById('mermaid').addEventListener('click',()=>send('mermaid'));document.querySelectorAll('[data-select]').forEach(b=>b.addEventListener('click',()=>send('select',{selected:b.dataset.select,direction:document.getElementById('direction').value,depth:Number(document.getElementById('depth').value)})));const svg=document.getElementById('architecture-svg');const viewport=document.getElementById('graph-viewport');let scale=1;const apply=()=>{svg.setAttribute('width',String(${visual.width}*scale));svg.setAttribute('height',String(${visual.height}*scale));};document.getElementById('zoom-in').addEventListener('click',()=>{scale=Math.min(2.5,scale+.2);apply()});document.getElementById('zoom-out').addEventListener('click',()=>{scale=Math.max(.4,scale-.2);apply()});document.getElementById('zoom-reset').addEventListener('click',()=>{scale=1;apply();viewport.scrollTo(0,0)});let dragging=false,startX=0,startY=0,scrollX=0,scrollY=0;viewport.addEventListener('pointerdown',e=>{if(e.target.closest('[data-node]'))return;dragging=true;startX=e.clientX;startY=e.clientY;scrollX=viewport.scrollLeft;scrollY=viewport.scrollTop});viewport.addEventListener('pointermove',e=>{if(dragging){viewport.scrollLeft=scrollX-(e.clientX-startX);viewport.scrollTop=scrollY-(e.clientY-startY)}});viewport.addEventListener('pointerup',()=>dragging=false);viewport.addEventListener('pointercancel',()=>dragging=false);svg.querySelectorAll('[data-node]').forEach(n=>{const select=()=>send('select',{selected:n.dataset.node,direction:document.getElementById('direction').value,depth:Number(document.getElementById('depth').value)});n.addEventListener('click',select);n.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select()}})});document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>send('open',{file:b.dataset.open,line:Number(b.dataset.line)})));</script>
+<script nonce="${nonce}">const api=acquireVsCodeApi();const edgeEvidence=${JSON.stringify([])};const send=(action,extra={})=>api.postMessage({action,...extra});for(const id of ['node','direction','depth','type','kind'])document.getElementById(id).addEventListener('change',()=>send('select',{selected:document.getElementById('node').value,direction:document.getElementById('direction').value,depth:Number(document.getElementById('depth').value),type:document.getElementById('type').value,kind:document.getElementById('kind').value}));document.getElementById('open').addEventListener('click',()=>send('open',{file:document.getElementById('node').value,line:1}));document.getElementById('mermaid').addEventListener('click',()=>send('mermaid'));document.querySelectorAll('[data-select]').forEach(b=>b.addEventListener('click',()=>send('select',{selected:b.dataset.select,direction:document.getElementById('direction').value,depth:Number(document.getElementById('depth').value),type:document.getElementById('type').value,kind:document.getElementById('kind').value})));const svg=document.getElementById('architecture-svg');const viewport=document.getElementById('graph-viewport');let scale=1;const apply=()=>{svg.setAttribute('width',String(${visual.width}*scale));svg.setAttribute('height',String(${visual.height}*scale));};document.getElementById('zoom-in').addEventListener('click',()=>{scale=Math.min(2.5,scale+.2);apply()});document.getElementById('zoom-out').addEventListener('click',()=>{scale=Math.max(.4,scale-.2);apply()});document.getElementById('zoom-reset').addEventListener('click',()=>{scale=1;apply();viewport.scrollTo(0,0)});let dragging=false,startX=0,startY=0,scrollX=0,scrollY=0;viewport.addEventListener('pointerdown',e=>{if(e.target.closest('[data-node]'))return;dragging=true;startX=e.clientX;startY=e.clientY;scrollX=viewport.scrollLeft;scrollY=viewport.scrollTop});viewport.addEventListener('pointermove',e=>{if(dragging){viewport.scrollLeft=scrollX-(e.clientX-startX);viewport.scrollTop=scrollY-(e.clientY-startY)}});viewport.addEventListener('pointerup',()=>dragging=false);viewport.addEventListener('pointercancel',()=>dragging=false);svg.querySelectorAll('[data-edge]').forEach(e=>{const open=()=>send('edge',{index:Number(e.dataset.edge)});e.addEventListener('click',open);e.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();open()}})});svg.querySelectorAll('[data-node]').forEach(n=>{const select=()=>send('select',{selected:n.dataset.node,direction:document.getElementById('direction').value,depth:Number(document.getElementById('depth').value),type:document.getElementById('type').value,kind:document.getElementById('kind').value});n.addEventListener('click',select);n.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select()}})});document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>send('open',{file:b.dataset.open,line:Number(b.dataset.line)})));</script>
 </body></html>`;
 }
 
@@ -107,8 +113,8 @@ async function showArchitectureExplorer(folder, options = {}) {
     vscode.ViewColumn.One, { enableScripts: true });
   const nonce = crypto.randomBytes(16).toString('hex');
   let selected = result.nodes[0]?.id || '';
-  let direction = 'both', depth = 1;
-  const render = () => { panel.webview.html = view(result, selected, direction, depth, nonce); };
+  let direction = 'both', depth = 1, type = 'all', kind = 'all';
+  const render = () => { panel.webview.html = view(result, selected, direction, depth, nonce, type, kind); };
   panel.webview.onDidReceiveMessage(async message => {
     if (!message || typeof message.action !== 'string') return;
     if (message.action === 'select') {
@@ -116,7 +122,21 @@ async function showArchitectureExplorer(folder, options = {}) {
       selected = message.selected;
       direction = ['both','incoming','outgoing'].includes(message.direction) ? message.direction : 'both';
       depth = Number.isInteger(message.depth) ? Math.min(4, Math.max(1, message.depth)) : 1;
+      const types = new Set(result.nodes.map(n => n.type));
+      const kinds = new Set(result.edges.map(e => e.kind));
+      type = types.has(message.type) ? message.type : 'all';
+      kind = kinds.has(message.kind) ? message.kind : 'all';
       render();
+    } else if (message.action === 'edge') {
+      const edges = layout(result, selected, direction, depth, type, kind).edges;
+      if (!Number.isInteger(message.index) || message.index < 0 || message.index >= edges.length) return;
+      const evidence = edges[message.index].evidence;
+      if (!evidence || !result.nodes.some(n => n.id === evidence.file)) return;
+      const document = await vscode.workspace.openTextDocument(vscode.Uri.joinPath(folder.uri, evidence.file));
+      const editor = await vscode.window.showTextDocument(document, { preview: true });
+      const line = Math.max(0, Math.min(document.lineCount - 1, (Number(evidence.line) || 1) - 1));
+      editor.selection = new vscode.Selection(line, 0, line, 0);
+      editor.revealRange(new vscode.Range(line, 0, line, 0));
     } else if (message.action === 'open') {
       if (typeof message.file !== 'string' || !result.nodes.some(n => n.id === message.file)) return;
       const uri = vscode.Uri.joinPath(folder.uri, message.file);
