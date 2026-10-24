@@ -19,7 +19,6 @@ async function scanWorkspace(folder, options = {}) {
     return analyzerFor(file) || manifests.includes(file) || /\.(?:yaml|yml)$/.test(file);
   });
   let skipped = 0;
-  const rootPath = folder.uri.path.replace(/\\/$/, '');
   for (const uri of candidates.slice(0, maxFiles)) {
     const rootPath = folder.uri.path.replace(/\/$/, '');
     if (!uri.path.startsWith(rootPath + '/')) { skipped++; continue; }
