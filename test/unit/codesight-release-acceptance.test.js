@@ -2,20 +2,17 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const cp = require('node:child_process');
 const { layout } = require('../../src/modules/architecture-visual-core');
 
 test('CodeSight marketplace PNG is generated with expected signature and dimensions', t => {
   const repo = path.resolve(__dirname, '../..');
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'codesight-icon-'));
   const icon = path.join(repo, 'images', 'icon.png');
   const previous = fs.existsSync(icon) ? fs.readFileSync(icon) : null;
   t.after(() => {
     if (previous) fs.writeFileSync(icon, previous);
     else if (fs.existsSync(icon)) fs.unlinkSync(icon);
-    fs.rmSync(dir, {recursive:true,force:true});
   });
   cp.execFileSync(process.execPath, [path.join(repo,'scripts/generate-codesight-icon.cjs')]);
   const png = fs.readFileSync(icon);
