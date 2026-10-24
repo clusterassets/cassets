@@ -19,8 +19,8 @@ test('two workspace roots scan independently and exclude symlink escape', async 
   const vscode={
     workspace:{
       isTrusted:true,
-      findFiles:async pattern=>(await fs.readdir(pattern.base.fsPath)).filter(n=>n.endsWith('.js')).map(n=>({
-        scheme:'file',authority:'',fsPath:path.join(pattern.base.fsPath,n),path:path.join(pattern.base.fsPath,n)
+      findFiles:async pattern=>(await fs.readdir(pattern.base.uri.fsPath)).filter(n=>n.endsWith('.js')).map(n=>({
+        scheme:'file',authority:'',fsPath:path.join(pattern.base.uri.fsPath,n),path:path.join(pattern.base.uri.fsPath,n)
       })),
       fs:{stat:fs.stat,readFile:fs.readFile}
     },
