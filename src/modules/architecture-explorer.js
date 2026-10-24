@@ -2,6 +2,7 @@
 const vscode = require('vscode');
 const { discover } = require('./architecture-core');
 const { neighborhood, detail } = require('./architecture-view-core');
+const { layout } = require('./architecture-visual-core');
 const crypto = require('node:crypto');
 const { analyzerFor, manifests, classify } = require('./architecture-analyzers');
 
@@ -51,6 +52,7 @@ function escapeHtml(value) {
 function view(graph, selected, direction, depth, nonce) {
   const slice = neighborhood(graph, selected, direction, depth);
   const item = detail(graph, selected);
+  const visual = layout(graph, selected, direction, depth);
   const items = graph.nodes.slice(0, 300).map(n =>
     '<option value="' + escapeHtml(n.id) + '"' + (n.id === selected ? ' selected' : '') + '>' + escapeHtml(n.id) + '</option>').join('');
   const lines = slice.edges.slice(0, 300).map(e =>
@@ -58,6 +60,22 @@ function view(graph, selected, direction, depth, nonce) {
     escapeHtml(e.kind) + '</td><td><button data-select="' + escapeHtml(e.to) + '">' + escapeHtml(e.to) +
     '</button></td><td><button data-open="' + escapeHtml(e.evidence.file) + '" data-line="' + Number(e.evidence.line || 1) +
     '">Line ' + Number(e.evidence.line || 1) + '</button></td></tr>').join('');
+  const positions = new Map(visual.nodes.map(n => [n.id, n]));
+  const svgEdges = visual.edges.map((edge, i) => {
+    const from = positions.get(edge.from), to = positions.get(edge.to);
+    if (!from || !to) return '';
+    const x1 = from.x + from.width / 2, y1 = from.y + from.height / 2;
+    const x2 = to.x + to.width / 2, y2 = to.y + to.height / 2;
+    return '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 +
+      '" stroke="currentColor" stroke-opacity=".45" stroke-width="1.5" marker-end="url(#arrow)"/>';
+  }).join('');
+  const svgNodes = visual.nodes.map(n => '<g data-node="' + escapeHtml(n.id) + '" role="button" tabindex="0" aria-label="Select ' +
+    escapeHtml(n.id) + '"><rect x="' + n.x + '" y="' + n.y + '" width="' + n.width + '" height="' + n.height +
+    '" rx="8" fill="' + (n.id === selected ? 'var(--vscode-button-background)' : 'var(--vscode-editorWidget-background)') +
+    '" stroke="var(--vscode-focusBorder)"/><text x="' + (n.x+8) + '" y="' + (n.y+24) +
+    '" fill="var(--vscode-foreground)" font-size="12">' + escapeHtml(n.id.length > 27 ? n.id.slice(0,24)+'…' : n.id) +
+    '</text><text x="' + (n.x+8) + '" y="' + (n.y+44) + '" fill="var(--vscode-descriptionForeground)" font-size="10">' +
+    escapeHtml(n.type) + '</text></g>').join('');
   const issues = [...(item?.unresolved || []).map(x => 'Unresolved: ' + x.specifier + ' (line ' + x.line + ')'),
     ...(item?.external || []).map(x => 'External: ' + x.specifier + ' (line ' + x.line + ')')];
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
@@ -71,9 +89,14 @@ function view(graph, selected, direction, depth, nonce) {
 <label for="depth">Depth</label><select id="depth">${[1,2,3,4].map(n=>'<option value="'+n+'" '+(depth===n?'selected':'')+'>'+n+'</option>').join('')}</select>
 <button id="open">Open selected source</button><button id="mermaid">Open Mermaid text</button>
 <section><h2>${escapeHtml(selected)}</h2><p>Type: ${escapeHtml(item?.node.type || 'unknown')} · Analyzer: ${escapeHtml(item?.node.analyzer || 'none')}</p><p>Incoming: ${item?.incoming.length || 0} · Outgoing: ${item?.outgoing.length || 0} · View: ${slice.nodes.length} nodes, ${slice.edges.length} edges ${slice.truncated ? '(bounded)' : ''}</p></section>
+<section><h2>Visual dependency graph</h2><small>Bounded to 90 nodes / 180 edges. Select nodes to explore. Zoom and pan are local to the graph. ${visual.truncated ? 'View truncated.' : ''}</small>
+<div class="actions"><button id="zoom-in">Zoom +</button><button id="zoom-out">Zoom −</button><button id="zoom-reset">Reset view</button></div>
+<div id="graph-viewport" tabindex="0" aria-label="Dependency graph; use buttons for zoom" style="overflow:auto;max-height:560px;border:1px solid var(--vscode-panel-border)">
+<svg id="architecture-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${visual.width} ${visual.height}" width="${visual.width}" height="${visual.height}" role="img" aria-label="Architecture dependencies">
+<defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="none" stroke="currentColor"/></marker></defs>${svgEdges}${svgNodes}</svg></div></section>
 <section><h2>Evidence-linked relationships</h2><table><thead><tr><th>From</th><th>Kind</th><th>To</th><th>Evidence</th></tr></thead><tbody>${lines || '<tr><td colspan="4">No relationships in selected view.</td></tr>'}</tbody></table></section>
 <section><h2>Unresolved / external references</h2><ul>${issues.slice(0,80).map(x=>'<li>'+escapeHtml(x)+'</li>').join('') || '<li>None for selected source.</li>'}</ul></section>
-<script nonce="${nonce}">const api=acquireVsCodeApi();const send=(action,extra={})=>api.postMessage({action,...extra});for(const id of ['node','direction','depth'])document.getElementById(id).addEventListener('change',()=>send('select',{selected:document.getElementById('node').value,direction:document.getElementById('direction').value,depth:Number(document.getElementById('depth').value)}));document.getElementById('open').addEventListener('click',()=>send('open',{file:document.getElementById('node').value,line:1}));document.getElementById('mermaid').addEventListener('click',()=>send('mermaid'));document.querySelectorAll('[data-select]').forEach(b=>b.addEventListener('click',()=>send('select',{selected:b.dataset.select,direction:document.getElementById('direction').value,depth:Number(document.getElementById('depth').value)})));document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>send('open',{file:b.dataset.open,line:Number(b.dataset.line)})));</script>
+<script nonce="${nonce}">const api=acquireVsCodeApi();const send=(action,extra={})=>api.postMessage({action,...extra});for(const id of ['node','direction','depth'])document.getElementById(id).addEventListener('change',()=>send('select',{selected:document.getElementById('node').value,direction:document.getElementById('direction').value,depth:Number(document.getElementById('depth').value)}));document.getElementById('open').addEventListener('click',()=>send('open',{file:document.getElementById('node').value,line:1}));document.getElementById('mermaid').addEventListener('click',()=>send('mermaid'));document.querySelectorAll('[data-select]').forEach(b=>b.addEventListener('click',()=>send('select',{selected:b.dataset.select,direction:document.getElementById('direction').value,depth:Number(document.getElementById('depth').value)})));const svg=document.getElementById('architecture-svg');const viewport=document.getElementById('graph-viewport');let scale=1;const apply=()=>{svg.setAttribute('width',String(${visual.width}*scale));svg.setAttribute('height',String(${visual.height}*scale));};document.getElementById('zoom-in').addEventListener('click',()=>{scale=Math.min(2.5,scale+.2);apply()});document.getElementById('zoom-out').addEventListener('click',()=>{scale=Math.max(.4,scale-.2);apply()});document.getElementById('zoom-reset').addEventListener('click',()=>{scale=1;apply();viewport.scrollTo(0,0)});let dragging=false,startX=0,startY=0,scrollX=0,scrollY=0;viewport.addEventListener('pointerdown',e=>{if(e.target.closest('[data-node]'))return;dragging=true;startX=e.clientX;startY=e.clientY;scrollX=viewport.scrollLeft;scrollY=viewport.scrollTop});viewport.addEventListener('pointermove',e=>{if(dragging){viewport.scrollLeft=scrollX-(e.clientX-startX);viewport.scrollTop=scrollY-(e.clientY-startY)}});viewport.addEventListener('pointerup',()=>dragging=false);viewport.addEventListener('pointercancel',()=>dragging=false);svg.querySelectorAll('[data-node]').forEach(n=>{const select=()=>send('select',{selected:n.dataset.node,direction:document.getElementById('direction').value,depth:Number(document.getElementById('depth').value)});n.addEventListener('click',select);n.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select()}})});document.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>send('open',{file:b.dataset.open,line:Number(b.dataset.line)})));</script>
 </body></html>`;
 }
 
