@@ -11,6 +11,7 @@ vm.runInNewContext(source, {
   require: name => {
     if (name === 'vscode') return { workspace: {}, window: {} };
     if (name === './project-task-view') return require('../../src/modules/project-task-view');
+    if (name === './native-debugging') return { createDebugTracker() {}, getActiveDebugTracker() {}, startNativeDebugging() {}, availableConfigurations: () => [], debugView: () => ({ active: 0, sessions: [] }) };
     if (name === './task-lifecycle') return { getActiveTaskLifecycle: () => null };
     if (name === './command-inventory') return { inventory: () => [] };
     if (name === './doctor-verification') return { scopeFor: () => null };
