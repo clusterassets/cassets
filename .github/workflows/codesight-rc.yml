@@ -1,7 +1,6 @@
-name: CodeSight A2 VSIX Release Candidate
+name: CodeSight A2 VSIX Validation (non-release)
 
 on:
-  workflow_dispatch:
   pull_request:
     branches: [main]
     paths:
@@ -15,7 +14,7 @@ permissions:
 
 jobs:
   release-candidate:
-    name: Validate and package A2 VSIX
+    name: Validate and package A2 test VSIX
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
