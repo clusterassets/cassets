@@ -1,6 +1,6 @@
 # CAssets CodeSight — DevReady for VS Code
 
-<p align="center"><img src="images/codesight-icon.svg" alt="CodeSight compass icon" width="132" /></p>
+<p align="center"><img src="images/icon.png" alt="CodeSight compass icon" width="132" /></p>
 
 <p align="center"><strong>Understand your code. See dependencies. Develop with confidence.</strong></p>
 
@@ -10,7 +10,7 @@
 
 **Publisher:** ClusterAssets · **Creator and principal architect:** Vivek Rao Bhosale · **Extension ID:** `clusterassets.cassets` · **Package:** `cassets` · **Current manifest version:** `0.7.0`.
 
-![CodeSight architecture overview](docs/images/codesight-architecture.svg)
+[View the CodeSight architecture diagram](docs/images/codesight-architecture.svg)
 
 ## What you can do today
 
@@ -39,7 +39,7 @@ For Windows PowerShell, use `npm ci`, `npm run validate`, `npm run test:unit`, a
 
 ## How CodeSight works
 
-![CodeSight feature journey](docs/images/codesight-workflow.svg)
+[View the CodeSight feature workflow diagram](docs/images/codesight-workflow.svg)
 
 CodeSight uses bounded repository reads and VS Code APIs. Workspace Trust gates sensitive inspection and execution paths. Existing repository files remain developer-owned; no repository instructions are executed just because they appear in source files. The extension does not silently upload repository contents or install dependencies.
 
