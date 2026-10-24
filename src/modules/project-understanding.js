@@ -7,6 +7,7 @@ const prerequisites = require('./prerequisites');
 const { inventory } = require('./command-inventory');
 const { taskView } = require('./project-task-view');
 const { getActiveTaskLifecycle } = require('./task-lifecycle');
+const { createDebugTracker, getActiveDebugTracker, startNativeDebugging, availableConfigurations, debugView } = require('./native-debugging');
 
 const ACTIONS = Object.freeze({
   refresh: null,
@@ -22,6 +23,7 @@ const ACTIONS = Object.freeze({
   graph: 'cassets.showWorkspaceGraph',
   intelligence: 'cassets.showIntelligence',
   tasks: 'cassets.showTaskHistory',
+  debug: null,
   setup: 'cassets.bootstrapWorkspace'
 });
 
@@ -79,7 +81,7 @@ function doctorSection(report) {
     '</section>';
 }
 
-function render(model, nonce, report = null, folders = [], commands = [], taskState = { counts: {}, tasks: [] }) {
+function render(model, nonce, report = null, folders = [], commands = [], taskState = { counts: {}, tasks: [] }, debugState = { active: 0, sessions: [] }, debugConfigs = []) {
   const tags = items => items.length ? items.map(x => '<span class="tag">' + escapeHtml(x) + '</span>').join('') : '<span class="muted">Not detected</span>';
   const rows = model.scripts.length ? model.scripts.map(x =>
     '<tr><th scope="row">' + escapeHtml(x.name) + '</th><td><code>' + escapeHtml(x.command) + '</code></td></tr>'
@@ -92,6 +94,8 @@ function render(model, nonce, report = null, folders = [], commands = [], taskSt
   ).join('') : '<li>Runtime versions not declared</li>';
   const taskRows = taskState.tasks.map(task => '<tr><th scope="row">' + escapeHtml(task.name) + '</th><td>' + escapeHtml(task.status) + '</td><td>' + (task.exitCode === null ? '—' : task.exitCode) + '</td><td>' + (task.startedAt ? escapeHtml(new Date(task.startedAt).toLocaleString()) : '—') + '</td></tr>').join('');
   const taskCounts = taskState.counts || {};
+  const debugRows = debugState.sessions.map(x => '<tr><th scope="row">' + escapeHtml(x.name) + '</th><td>' + escapeHtml(x.type) + '</td><td>' + escapeHtml(x.status) + '</td></tr>').join('');
+  const debugOptions = debugConfigs.map(x => '<li>' + escapeHtml(x.name) + ' (' + escapeHtml(x.type) + ' · ' + escapeHtml(x.request) + ')</li>').join('');
   const buttons = [
     ['health', 'Project health'], ['runWorkspace', 'Run workspace script'], ['run', 'Run recommended'],
     ['tasks', 'Task history'], ['guide', 'Onboarding'], ['graph', 'Workspace graph'], ['intelligence', 'More intelligence']
@@ -121,6 +125,7 @@ td{overflow-wrap:anywhere}code{font-family:var(--vscode-editor-font-family)}.act
 <section><h2>Code quality</h2><p>Formatter: <strong>${escapeHtml(model.formatter)}</strong></p><p>Linter: <strong>${escapeHtml(model.linter)}</strong></p><p>Tests: ${tags(model.tests)}</p></section>
 </div>
 <section id="tasks"><h2>Native task lifecycle</h2><p class="muted">Session-only, workspace-scoped. Task completion does not verify service health.</p><p>Scheduled: ${taskCounts.scheduled || 0} · Running: ${taskCounts.running || 0} · Completed: ${taskCounts.completed || 0} · Failed: ${taskCounts.failed || 0} · Unknown: ${taskCounts.unknown || 0}</p><table><thead><tr><th>Task</th><th>Status</th><th>Exit</th><th>Started</th></tr></thead><tbody>${taskRows || '<tr><td colspan="4">No CAssets tasks recorded for this workspace session.</td></tr>'}</tbody></table><button data-action="tasks">Show task history</button></section>
+<section id="debug"><h2>Native debugging</h2><p class="muted">Uses existing VS Code launch configurations. Debug sessions are observed only while this Project Overview is open.</p><p>Active sessions: ${debugState.active}</p><p>Available configurations:</p><ul>${debugOptions || '<li>No supported launch configurations detected.</li>'}</ul><button data-action="debug">Start native debugging…</button><table><thead><tr><th>Session</th><th>Debugger</th><th>Status</th></tr></thead><tbody>${debugRows || '<tr><td colspan="3">No observed debug sessions.</td></tr>'}</tbody></table></section>
 ${doctorSection(report)}
 <section><h2>Discovered workspace commands</h2><p class="muted">Root and package commands are shown independently. Discovery never runs commands.</p><table><thead><tr><th>Origin</th><th>Script</th><th>Command</th><th>Classification</th></tr></thead><tbody>${commandRows || '<tr><td colspan="4">No workspace commands discovered</td></tr>'}</tbody></table></section>
 <section><h2>Available repository scripts</h2><table><thead><tr><th>Script</th><th>Command</th></tr></thead><tbody>${rows}</tbody></table><p class="muted">Commands are shown for inspection, not executed automatically.</p></section>
@@ -137,6 +142,9 @@ async function openProjectUnderstanding(inspectFolder, inspectDoctor, inspectGra
   const panel = vscode.window.createWebviewPanel('cassets.projectUnderstanding', 'CAssets · ' + folder.name,
     vscode.ViewColumn.One, { enableScripts: true, retainContextWhenHidden: false });
   const nonce = require('crypto').randomBytes(16).toString('hex');
+  const debugContext = { subscriptions: [] };
+  const debugTracker = createDebugTracker(debugContext);
+  let debugConfigs = [];
   let report = null;
   let currentModel = null;
   let previousIds = new Set();
@@ -145,10 +153,12 @@ async function openProjectUnderstanding(inspectFolder, inspectDoctor, inspectGra
   let disposed = false;
   const renderCurrent = () => {
     if (!disposed && currentModel) panel.webview.html = render(currentModel, nonce, report, folders, cachedCommands,
-      taskView(lifecycle?.snapshot() || [], folder.name));
+      taskView(lifecycle?.snapshot() || [], folder.name), debugView(debugTracker.snapshot(), folder.name), debugConfigs);
   };
   const lifecycleListener = lifecycle?.onDidChange(() => renderCurrent());
-  panel.onDidDispose(() => { disposed = true; lifecycleListener?.dispose(); });
+  const debugListener = debugTracker.onDidChange(() => renderCurrent());
+  panel.onDidDispose(() => { disposed = true; lifecycleListener?.dispose(); debugListener.dispose();
+    for (const subscription of debugContext.subscriptions) subscription.dispose(); });
   const refresh = async () => {
     try {
       const { stack, intelligence } = await inspectFolder(folder);
@@ -156,6 +166,7 @@ async function openProjectUnderstanding(inspectFolder, inspectDoctor, inspectGra
       const graphResult = await inspectGraph(folder);
       const commands = inventory(graphResult.workspaceGraph?.packages || [{ path: '.', name: stack.package?.name || '(root)', scripts: stack.scripts || {} }]);
       cachedCommands = commands;
+      debugConfigs = availableConfigurations(vscode.workspace.getConfiguration('launch', folder.uri).get('configurations', []));
       renderCurrent();
     } catch (error) {
       vscode.window.showErrorMessage('CAssets: project inspection failed: ' + error.message);
@@ -165,6 +176,7 @@ async function openProjectUnderstanding(inspectFolder, inspectDoctor, inspectGra
     if (!message || typeof message.action !== 'string' ||
         !Object.prototype.hasOwnProperty.call(ACTIONS, message.action)) return;
     if (message.action === 'refresh') { await refresh(); return; }
+    if (message.action === 'debug') { await startNativeDebugging(folder); return; }
     if (message.action === 'folder') {
       if (checking) return;
       if (!Number.isInteger(message.index) || message.index < 0 || message.index >= folders.length) return;
