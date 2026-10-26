@@ -61,6 +61,7 @@ function analyzerFor(file) {
   return definitions.find(x => x.extensions.includes(extension));
 }
 function classify(file) {
+  if (/\.tsx?$/i.test(file)) return 'typescript';
   if (manifests.some(name => file === name || file.endsWith('/'+name))) return 'manifest';
   if (/\.ya?ml$/i.test(file)) return 'configuration';
   return analyzerFor(file)?.id || 'unsupported';
