@@ -79,3 +79,9 @@ The CI pipeline also performs security checks and creates a downloadable VSIX ar
 [Security and Trust](docs/SECURITY-AND-TRUST.md) · [Commands](docs/COMMANDS.md) · [Configuration](docs/CONFIGURATION.md) · [Release process](docs/RELEASE-AND-PUBLISHING.md)
 
 Licensed under MIT. Maintained by [ClusterAssets](https://clusterassets.com).
+
+## Open CodeSight in VS Code
+
+Use the **CodeSight** compass icon in the Activity Bar to open the **Explore Workspace** sidebar. Select Architecture Explorer, Project Overview, Workspace Doctor, Workspace Package Graph, or How to Run. These entries invoke the existing VS Code commands and do not execute workspace scripts simply by opening the sidebar.
+
+Alternatively open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and run **CAssets: Discover Source Architecture** or **CAssets: Open Project Overview**. A trusted workspace is required for source architecture scanning.
