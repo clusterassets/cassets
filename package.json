@@ -71,7 +71,9 @@
   ],
   "main": "./src/extension.js",
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onView:cassets.codesight.actions",
+    "onCommand:cassets.architectureExplorer"
   ],
   "capabilities": {
     "untrustedWorkspaces": {
@@ -374,6 +376,23 @@
       "commandPalette": [
         {
           "command": "cassets.projectUnderstanding"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "cassets.codesight",
+          "title": "CodeSight",
+          "icon": "images/codesight-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "cassets.codesight": [
+        {
+          "id": "cassets.codesight.actions",
+          "name": "Explore Workspace"
         }
       ]
     }

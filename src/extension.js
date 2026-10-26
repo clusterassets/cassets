@@ -15,6 +15,7 @@ const onboarding = require('./modules/onboarding');
 const { runWorkspaceScript } = require('./modules/workspace-script-runner');
 const { createTaskLifecycle } = require('./modules/task-lifecycle');
 const { showArchitectureExplorer } = require('./modules/architecture-explorer');
+const { CodeSightSidebarProvider } = require('./modules/codesight-sidebar');
 const workstation = require('./modules/workstation');
 
 function cassetsConfig() { return vscode.workspace.getConfiguration('cassets'); }
@@ -792,6 +793,7 @@ async function runWorkspaceDoctor() {
 }
 
 async function activate(context) {
+  context.subscriptions.push(vscode.window.registerTreeDataProvider('cassets.codesight.actions', new CodeSightSidebarProvider()));
   taskLifecycle = createTaskLifecycle(context);
   healthStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 20);
   context.subscriptions.push(healthStatusItem);
