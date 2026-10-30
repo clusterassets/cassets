@@ -31,6 +31,13 @@ async function scanWorkspace(folder, options = {}) {
       files[file] = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf8');
     } catch { skipped++; }
   }
+  try {
+    const configUri = vscode.Uri.joinPath(folder.uri, 'tsconfig.json');
+    if (await containedSource(folder.uri, configUri)) {
+      const stat = await vscode.workspace.fs.stat(configUri);
+      if (stat.size <= maxBytes) files['tsconfig.json'] = Buffer.from(await vscode.workspace.fs.readFile(configUri)).toString('utf8');
+    }
+  } catch { /* tsconfig is optional */ }
   const result = discover(files, { maxEdges: options.maxEdges || 4000 });
   return { ...result, scannedFiles: Object.keys(files).length, skippedFiles: skipped,
     truncated: result.truncated || candidates.length > maxFiles || uris.length >= Math.min(maxFiles * 8, 8000), folder: folder.name, folderUri: folder.uri.toString() };

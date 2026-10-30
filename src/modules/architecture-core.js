@@ -5,6 +5,46 @@ const RESOLUTIONS = ['', '.ts','.tsx','.js','.jsx','.mts','.cts','.mjs','.cjs',
   '/index.ts','/index.tsx','/index.js','/index.jsx','.py','/__init__.py','.go','.rs','.h','.hpp'];
 function normalize(value) { return String(value).replace(/\\/g, '/').replace(/^\.\//, ''); }
 function extractDependencies(source) { return analyzeFile('source.ts', source).references; }
+
+function tsconfigFor(from, contents) {
+  const dirs = path.dirname(from).split('/');
+  for (let i = dirs.length; i >= 0; i--) {
+    const name = [...dirs.slice(0, i), 'tsconfig.json'].join('/');
+    if (!contents.has(name)) continue;
+    try {
+      const config = JSON.parse(contents.get(name).replace(/\/\*[\s\S]*?\*\/|(^|\s)\/\/.*$/gm, '$1'));
+      const opts = config.compilerOptions || {};
+      const configDir = path.dirname(name) === '.' ? '' : path.dirname(name);
+      return { base: path.normalize(path.join(configDir, opts.baseUrl || '.')), paths: opts.paths || {} };
+    } catch { return null; }
+  }
+  return null;
+}
+function resolveAlias(from, specifier, contents, names) {
+  const config = tsconfigFor(from, contents);
+  if (!config) return null;
+  for (const [pattern, targets] of Object.entries(config.paths)) {
+    const star = pattern.indexOf('*');
+    const matches = star < 0 ? specifier === pattern :
+      specifier.startsWith(pattern.slice(0, star)) && specifier.endsWith(pattern.slice(star + 1));
+    if (!matches || !Array.isArray(targets)) continue;
+    const middle = star < 0 ? '' : specifier.slice(star, specifier.length - (pattern.length - star - 1));
+    for (const target of targets) {
+      if (typeof target !== 'string') continue;
+      const base = path.normalize(path.join(config.base, target.replace('*', middle)));
+      if (base === '..' || base.startsWith('../') || path.isAbsolute(base)) continue;
+      const found = RESOLUTIONS.map(ext => base + ext).find(candidate => names.has(candidate));
+      if (found) return found;
+    }
+  }
+  if (config.base && config.base !== '.') {
+    const base = path.normalize(path.join(config.base, specifier));
+    if (base !== '..' && !base.startsWith('../') && !path.isAbsolute(base))
+      return RESOLUTIONS.map(ext => base + ext).find(candidate => names.has(candidate)) || null;
+  }
+  return null;
+}
+
 function discover(files, options = {}) {
   const maxEdges = options.maxEdges || 4000;
   const contents = new Map(Object.entries(files).map(([name, content]) => [normalize(name), String(content)]));
@@ -24,6 +64,13 @@ function discover(files, options = {}) {
       const isLocal = specifier.startsWith('.') || dep.kind === 'include' ||
         (analyzed.analyzer === 'rust' && (specifier.startsWith('crate::') || specifier.startsWith('self::')));
       if (!isLocal) {
+        const aliasTarget = analyzed.analyzer === 'javascript' ? resolveAlias(from, specifier, contents, names) : null;
+        if (aliasTarget) {
+          edges.push({ from, to: aliasTarget, kind: dep.kind,
+            evidence: { file: from, line: dep.line, specifier, analyzer: analyzed.analyzer },
+            confidence: 'static-reference' });
+          continue;
+        }
         external.push({ from, specifier, kind: dep.kind, line: dep.line, analyzer: analyzed.analyzer });
         continue;
       }
