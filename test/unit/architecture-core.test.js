@@ -34,3 +34,22 @@ test('edge limits truncate and literal dynamic imports are separately classified
   assert.equal(graph.edges.length, 1);
   assert.ok(extractDependencies("import('./b.js')").some(x => x.kind === 'dynamic-import'));
 });
+
+test('resolves tsconfig paths aliases to local source with line evidence', () => {
+  const graph = discover({
+    'tsconfig.json': JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@/*': ['src/*'] } } }),
+    'src/server.ts': "import { run } from '@/services/run';",
+    'src/services/run.ts': 'export const run = () => 1;'
+  });
+  assert.equal(graph.edges.length, 1);
+  assert.equal(graph.edges[0].to, 'src/services/run.ts');
+  assert.equal(graph.edges[0].evidence.line, 1);
+  assert.equal(graph.external.length, 0);
+});
+test('does not resolve aliases outside scanned workspace', () => {
+  const graph = discover({
+    'tsconfig.json': JSON.stringify({ compilerOptions: { paths: { '@/*': ['../outside/*'] } } }),
+    'src/server.ts': "import x from '@/secret';"
+  });
+  assert.equal(graph.edges.length, 0);
+});
